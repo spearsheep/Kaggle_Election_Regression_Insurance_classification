@@ -1,0 +1,1213 @@
+---
+title: "regression_final"
+author: "Jun Yu Chen"
+date: "8/29/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r }
+library(tidymodels)
+library(tidyverse)
+library(ISLR)
+library(dplyr)
+```
+
+```{r}
+columns_descriptions<-read.csv('column_descriptions.csv')
+train<-read.csv('train.csv')%>%select(-name)
+test <- read_csv("test.csv")
+names(test)
+
+train_folds <- vfold_cv(train,v=10,strata = percent_dem)
+```
+
+```{r}
+
+model1<-(lm(percent_dem~.-id,data = train))
+summary(model1)
+model1%>%predict(test)
+model1_sig<-tidy(model1)%>%filter(p.value <= 0.05)
+
+lm_spec <- linear_reg() %>% 
+  set_engine("lm")%>%
+  set_mode('regression')
+lm_recipe<-recipe(percent_dem~.,data = train)%>%
+  step_rm(id)
+lm_workflow <- workflow() %>%
+  add_model(lm_spec) %>%
+  add_recipe(lm_recipe)
+
+
+lm_crossval_fit <- lm_workflow%>%fit_resamples(resamples=train_folds)
+lm_cv_res<-lm_crossval_fit %>% collect_metrics()
+
+
+
+train_sig<-train[,c('percent_dem',c(model1_sig$term[2:33]))]
+(summary(lm(percent_dem~.,data = train_sig)))
+
+```
+# Feature Engineering
+
+```{r}
+# Recipe Engineering
+
+all_in_one_rec <- recipe(percent_dem ~ ., train) %>%
+  step_mutate(
+    per_white = (x0037e / x0001e) * 100, # white race percentage
+    per_black = (x0038e / x0001e) * 100, #black race percentage
+    per_native = (x0039e / x0001e) * 100, # native race percentage
+    per_asia = (x0044e / x0001e) * 100, # asian race percentage
+    per_pacific = (x0052e / x0001e) * 100, # pacific islander race percentage 
+    per_other = (x0057e / x0001e) * 100,  # other race percentage
+    per_latina = (x0071e / x0001e) * 100, # latin race percentage
+    male_perc = x0002e / x0001e, female_perc = x0003e / x0001e, 
+    age_under_5_perc = x0005e / x0001e, age_5_to_9_perc = x0006e / x0001e, 
+    age_10_to_14_perc = x0007e / x0001e, age_15_to_19_perc = x0008e / x0001e, 
+    age_20_to_24_perc = x0009e / x0001e, age_25_to_34_perc = x0010e / x0001e, 
+    age_35_to_44_perc = x0011e / x0001e, age_45_to_54_perc = x0012e / x0001e, 
+    age_55_to_59_perc = x0013e / x0001e, age_60_to_64_perc = x0014e / x0001e, 
+    age_65_to_74_perc = x0015e / x0001e, age_75_to_84_perc = x0016e / x0001e, 
+    age_over_85_perc = x0017e / x0001e, 
+    white_perc = x0037e / x0001e, black_perc = x0038e,
+    ai_cherokee_perc = x0040e / x0001e, ai_chippewa_perc = x0041e / x0001e,
+    ai_navajo_perc = x0042e / x0001e, ai_sioux_perc = x0043e / x0001e, 
+    a_chinese_perc = x0046e / x0001e, a_filipino_perc = x0047e / x0001e, 
+    a_japanese_perc = x0048e / x0001e, a_korean_perc = x0049e / x0001e, 
+    a_vietnamese_perc = x0050e / x0001e, a_other_perc = x0051e / x0001e, 
+    nh_hawaiian_perc = x0053e / x0001e, nh_chamorro_perc = x0054e / x0001e,
+    nh_samoan_perc = x0055e / x0001e, nh_other_perc = x0056e / x0001e,
+    one_race_other_perc = x0057e / x0001e, 
+    white_black_perc = x0059e / x0001e, white_indian_perc = x0060e / x0001e,
+    white_asian_perc = x0061e / x0001e, black_indian_perc = x0062e / x0001e,
+    total_white_perc = x0064e / x0001e, total_black_perc = x0065e / x0001e,
+    total_indian_perc = x0066e / x0001e, total_asian_perc = x0067e / x0001e,
+    total_hawaiian_perc = x0068e / x0001e, total_other_perc = x0069e / x0001e,
+    total_hispanic_perc = x0071e / x0001e, 
+    diversity_index = -(total_white_perc   * log(total_white_perc, base = exp(1))
+                        + total_black_perc  * log(total_black_perc, base = exp(1))
+                        + total_indian_perc  * log(total_indian_perc, base = exp(1))
+                        + total_asian_perc  * log(total_asian_perc, base = exp(1))
+                        + total_hawaiian_perc  * log(total_hawaiian_perc, base = exp(1))
+                        + total_other_perc  * log(total_other_perc, base = exp(1))
+                        + total_hispanic_perc  * log(total_hispanic_perc, base = exp(1))
+                        ),
+    his_mexican_perc = x0072e / x0001e, his_puerto_rican_perc = x0073e / x0001e,
+    his_cuban_perc = x0074e / x0001e, his_other_perc = x0075e / x0001e, 
+    his_mexican_perc = x0072e / x0001e, 
+    citizen_over_18_male_perc = x0088e / x0025e, 
+    citizen_over_18_female_perc = x0089e / x0025e, 
+    citizen_over_18_ratio_perc = x0087e / (x0025e),
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    edu_no_hs_perc = (c01_002e + c01_007e + c01_008e) / x0001e, 
+    edu_hs_perc = (c01_003e + c01_009e + c01_010e) / x0001e, 
+    edu_associate_perc = (c01_004e + c01_011e) / x0001e,
+    edu_bachelor_perc = (c01_005e + c01_015e) / x0001e, 
+    edu_no_hs_18_to_24_perc = c01_002e / x0001e, 
+    edu_hs_18_to_24_perc = c01_003e / x0001e,
+    edu_associate_18_to_24_perc = c01_004e / x0001e,
+    edu_bachelor_18_to_24_perc = c01_005e / x0001e,
+    edu_less_9_over_25_perc = c01_007e / x0001e,
+    edu_no_hs_over_25_perc = c01_008e / x0001e,
+    edu_hs_over_25_perc = c01_009e / x0001e,
+    edu_no_college_over_25_perc = c01_010e / x0001e,
+    edu_associate_over_25_perc = c01_011e / x0001e,
+    edu_bachelor_over_25_perc = c01_012e / x0001e,
+    edu_graduate_over_25_perc = c01_013e / x0001e,
+    edu_hs_25_to_34_perc = (c01_017e - c01_018e) / x0001e, 
+    edu_bachelor_25_to_34_perc = c01_018e / x0001e, 
+    edu_hs_35_to_44_perc = (c01_020e - c01_021e) / x0001e, 
+    edu_bachelor_35_to_44_perc = c01_021e / x0001e, 
+    edu_hs_45_to_64_perc = (c01_023e - c01_024e) / x0001e, 
+    edu_bachelor_45_to_64_perc = c01_024e / x0001e, 
+    edu_hs_over_65_perc = (c01_026e - c01_027e) / x0001e, 
+    edu_bachelor_over_65_perc = c01_027e / x0001e, 
+    housing_to_population_ratio = x0086e / x0001e, 
+    growth_rate_income = (income_per_cap_2020 - income_per_cap_2016) / income_per_cap_2016, 
+    growth_rate_gdp = (gdp_2020 - gdp_2016) / gdp_2016, 
+    income_growth_16_17 = (income_per_cap_2017 - income_per_cap_2016) / income_per_cap_2016, 
+    income_growth_17_18 = (income_per_cap_2018 - income_per_cap_2017) / income_per_cap_2017, 
+    income_growth_18_19 = (income_per_cap_2019 - income_per_cap_2018) / income_per_cap_2018, 
+    income_growth_19_20 = (income_per_cap_2020 - income_per_cap_2019) / income_per_cap_2019, 
+    gdp_growth_16_17 = (gdp_2017 - gdp_2016) / gdp_2016, 
+    gdp_growth_17_18 = (gdp_2018 - gdp_2017) / gdp_2017, 
+    gdp_growth_18_19 = (gdp_2019 - gdp_2018) / gdp_2018, 
+    gdp_growth_19_20 = (gdp_2020 - gdp_2019) / gdp_2019,
+    housing_density = (x0086e / x0001e) * 100,
+    gender_ratio = x0088e/x0089e,
+    Male_Pop_Percentage = (x0002e / x0001e) * 100,
+    Female_Pop_Percentage = (x0003e / x0001e) * 100,
+    Age_18_and_under = x0019e,
+    Age_18_to_34 = x0021e - (x0009e + x0010e + x0011e + x0012e + x0013e + x0014e + x0015e + x0016e + x0017e) + x0009e + x0010e,
+    Age_35_to_44 = x0011e,
+    Age_45_to_64 = x0012e + x0013e + x0014e,
+    Age_65_and_above = x0015e + x0016e + x0017e,
+    Age_18_and_under_pct = (Age_18_and_under / x0001e) * 100,
+    Age_18_to_34_pct = (Age_18_to_34 / x0001e) * 100,
+    Age_35_to_44_pct = (Age_35_to_44 / x0001e) * 100,
+    Age_45_to_64_pct = (Age_45_to_64 / x0001e) * 100,
+    Age_65_and_above_pct = (Age_65_and_above / x0001e) * 100,
+    Age_18_over_male_pct = (x0026e/x0021e) * 100,
+    Age_18_over_female_pct = (x0027e/x0021e) * 100,
+    Age_65_over_male_pct = (x0030e/x0029e) * 100,
+    Age_65_over_female_pct = (x0031e/x0029e) * 100,
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    pct_less_high_school_18_24 = c01_002e / c01_001e,
+    pct_high_school_18_24 = c01_003e / c01_001e,
+    pct_high_grad_18_24 = c01_004e / c01_001e,
+    pct_college_18_24 = c01_005e / c01_001e,
+    pct_less_9_25 = c01_007e / c01_006e,
+    pct_9_12_25 = c01_008e / c01_006e,
+    pct_high_grad_25 = c01_009e / c01_006e,
+    pct_college_25 = c01_010e / c01_006e,
+    pct_asso_25 = c01_011e / c01_006e,
+    pct_bach_25 = c01_012e / c01_006e,
+    pct_grad_25 = c01_013e / c01_006e,
+    pct_hs_higher_25 = c01_014e / c01_006e,
+    pct_bach_higher_25 = c01_015e / c01_006e,
+    pct_hs_higher_25_34 = c01_017e / c01_016e,
+    pct_bach_higher_25_34 = c01_018e / c01_016e,
+    pct_hs_higher_35_44 = c01_020e / c01_019e,
+    pct_bach_higher_35_44 = c01_021e / c01_019e,
+    pct_hs_higher_45_64 = c01_023e / c01_022e,
+    pct_bach_higher_45_64 = c01_024e / c01_022e,
+    pct_hs_higher_65 = c01_026e / c01_025e,
+    pct_bach_higher_65 = c01_027e / c01_025e,
+    
+  )%>%
+  step_rm(id,x0002e, x0003e, x0005e, x0006e, x0007e, x0008e, x0009e, x0010e, x0011e, 
+          x0012e, x0013e, x0014e, x0015e, x0016e, x0017e,x0018e, x0019e, x0020e, x0021e, 
+          x0022e, x0023e, x0024e, x0025e, x0026e, x0027e, x0029e, x0030e, x0031e, 
+          x0033e, x0034e, x0035e, x0036e, x0037e, x0038e, x0039e, x0040e, x0041e,
+          x0042e, x0043e, x0044e, x0045e, x0046e, x0047e, x0048e, x0049e, x0050e, 
+          x0051e, x0052e, x0053e, x0054e, x0055e, x0056e, x0057e, x0058e, x0059e,
+          x0060e, x0061e, x0062e, x0064e, x0065e, x0066e, x0067e, x0068e, x0069e, 
+          x0071e, x0072e, x0073e, x0074e, x0075e, x0076e, x0077e, x0078e, x0079e, 
+          x0080e, x0081e, x0082e, x0083e, x0084e, x0085e, x0086e, x0087e, x0088e, x0089e, 
+          c01_001e, c01_002e, c01_003e, c01_004e, c01_005e, c01_006e, c01_007e, 
+          c01_008e, c01_009e, c01_010e, c01_011e, c01_012e, c01_013e, c01_014e, 
+          c01_015e, c01_016e, c01_017e, c01_018e, c01_019e, c01_020e, c01_021e, 
+          c01_022e, c01_023e, c01_024e, c01_025e, c01_026e,c01_027e,Age_18_and_under,Age_18_to_34,Age_35_to_44,Age_45_to_64,Age_65_and_above)%>%
+  step_impute_knn(all_predictors())%>%
+  step_mutate(x2013_code = as.factor(x2013_code)) %>%
+  step_dummy(x2013_code, one_hot = TRUE)%>%step_lincomb(all_predictors())
+
+
+##If you want to see the transformed train data, prep and juice
+prep_rec <- prep(all_in_one_rec)
+train<-juice(prep_rec)
+
+
+##If you want to see the transformed test data
+baked_test <- bake(prep_rec, new_data = test)
+
+top_features <- readRDS("top_features.rds")
+top_features<-top_features%>%head(41)
+gbm_recipe<-all_in_one_rec%>%step_select(top_features,percent_dem)
+
+
+names(baked_test)
+names(train)
+```
+
+```{r}
+
+
+
+# Fit a linear model
+fit <- lm(percent_dem ~ ., data = train)
+summary(fit)
+
+
+##backAIC and backBIC to conduct variable selection
+library(MASS)
+backAIC <- stepAIC(fit, direction="backward")
+summary(backAIC)
+n <- nrow(train)  # number of observations
+k <- log(n)  # BIC penalty term
+
+backBIC <- stepAIC(model1, direction = "backward", trace = FALSE, k = k)
+
+
+
+# Load the xgboost package
+library(xgboost)
+
+# Prepare data
+train.data <- xgb.DMatrix(data = as.matrix(train[, -which(names(train) == "percent_dem")]), label = train$percent_dem)
+
+# Fit model
+xgb_fit <- xgboost(data = train.data, objective = "reg:squarederror", nrounds = 100)
+
+# Feature importance
+importance_matrix <- xgb.importance(model = xgb_fit)
+print(importance_matrix)
+
+
+# Start PNG device driver to save output to figure.png
+png("feature_importance_plot.png", width = 800, height = 600)
+
+# Plotting feature importance
+xgb.plot.importance(importance_matrix)
+
+# Add plot title, x-axis and y-axis labels
+title(main="Feature Importance Generated by XGBoost", ylab="Feature", xlab="Importance Score")
+
+# Turn off device driver (to close PNG file)
+dev.off()
+
+
+# Sort the dataframe by Gain in descending order
+sorted_importance_matrix <- importance_matrix %>% arrange(desc(Gain))
+# Save the sorted dataframe to a CSV file
+write.csv(sorted_importance_matrix, "sorted_importance_matrix.csv", row.names = FALSE)
+
+
+
+top_features <- importance_matrix %>% arrange(desc(Gain))%>%pull(Feature)
+
+saveRDS(top_features, "top_features.rds")
+
+top_features<-top_features%>%head(41)
+
+train<-train[,c("percent_dem",top_features)]
+names(train)
+
+
+```
+
+
+```{r}
+
+# Sort importance matrix
+importance_matrix_sorted <- importance_matrix[order(-importance_matrix$Gain), ]
+important_features <- importance_matrix_sorted$Feature
+important_features<- important_features%>%head(88)
+
+# Initialize progress bar
+pb <- txtProgressBar(min = 0, max = length(important_features), style = 3)
+
+results_df <- data.frame(Num_Features = integer(), RMSE = numeric())
+length(important_features)
+for (n in 1:length(important_features)) {
+  selected_features <- important_features[1:n]
+  print(n)
+  # Identifying non-selected features
+  all_vars <- colnames(train)
+  non_selected_features <- setdiff(all_vars, c("percent_dem", selected_features))
+  
+  # Create the model spec
+  xgb_spec_untuned <- boost_tree(
+    mode = 'regression', 
+    trees = 100
+  ) %>%
+    set_engine('xgboost', nthread = -1) %>%
+    set_mode('regression')
+  
+  # Create the recipe
+  xgb_recipe <- recipe(percent_dem ~ ., data = train) %>%
+    update_role(selected_features, new_role = "predictor") %>%
+    update_role(non_selected_features, new_role = "ID variable") %>%
+    step_impute_knn(all_predictors())
+  
+  # Create the workflow
+  xgb_workflow <- workflow() %>%
+    add_recipe(xgb_recipe) %>%
+    add_model(xgb_spec_untuned)
+  # create 5-fold cross validation
+  train_folds <- vfold_cv(train, v = 10)
+
+  # Fit model with cross-validation
+  xgb_crossval_fit <- xgb_workflow %>% 
+    fit_resamples(resamples = train_folds)
+  
+  # Collect metrics
+  metrics <- xgb_crossval_fit %>% collect_metrics()
+  
+  # Find the mean RMSE from cross-validation
+  mean_rmse <- metrics %>% filter(.metric == 'rmse') %>% select(mean) %>% pull()
+  
+  # Store the results
+  results_df <- rbind(results_df, data.frame(Num_Features = n, RMSE = mean_rmse))
+  
+  # Update progress bar
+  setTxtProgressBar(pb, n)
+}
+
+# Close progress bar
+close(pb)
+
+# Plot the results
+sensitivity_plot<-ggplot(results_df, aes(x = Num_Features, y = RMSE)) +
+  geom_line() +
+  geom_point() +
+  ggtitle("Sensitivity Analysis: Performance vs Number of Features")
+
+ggsave("sensitivity_plot.png", plot = sensitivity_plot, width = 10, height = 6, dpi = 300)
+
+```
+
+```{r}
+
+# Loop through each variable and plot against 'percent_dem'
+variables <- c("Male_Pop_Percentage", "Female_Pop_Percentage", 
+               "Age_18_and_under_pct", "Age_18_to_34_pct", 
+               "Age_35_to_44_pct", "Age_45_to_64_pct", 
+               "Age_65_and_above_pct", "Age_18_over_male_pct", 
+               "Age_18_over_female_pct", "Age_65_over_male_pct", 
+               "Age_65_over_female_pct", "total_votes")
+
+for (var in variables) {
+  p <- ggplot(train, aes_string(x = var, y = "percent_dem")) + 
+    geom_point() + 
+    geom_smooth(method = "lm") +  # Linear model fit for reference
+    ggtitle(paste("Scatter plot of", var, "vs percent_dem"))
+  print(p)  # Explicitly print the plot
+}
+
+
+polynomial_vars<-variables
+
+```
+
+```{r}
+# create model 
+xgb_spec_untuned <- boost_tree(
+  mode = 'regression', 
+  trees = 1000, 
+) %>%
+  set_engine('xgboost', nthread = -1) %>%
+  set_mode('regression')
+
+# create recipe
+xgb_recipe_untuned <- recipe(percent_dem ~ ., data = train) %>%
+  step_impute_knn(all_predictors())
+
+gbm_xgb_recipe<-gbm_recipe# Normalize numeric variables
+  # step_pca(all_predictors(), num_comp = 40)
+  # step_mutate(x2013_code = as.factor(x2013_code)) %>%
+  # step_dummy(x2013_code, one_hot = TRUE)
+
+# # create recipe 
+# xgb_recipe_untuned <- recipe(percent_dem ~ id + total_votes + x0001e + income_per_cap_2016 + 
+#     income_per_cap_2017 + income_per_cap_2018 + gdp_2016 + gdp_2020 + 
+#     per_white + per_black + per_native + per_other + per_latina + 
+#     age_under_5_perc + age_25_to_34_perc + age_35_to_44_perc + 
+#     age_65_to_74_perc + age_75_to_84_perc + black_perc + ai_cherokee_perc + 
+#     ai_sioux_perc + a_chinese_perc + a_filipino_perc + a_japanese_perc + 
+#     a_other_perc + nh_hawaiian_perc + white_black_perc + white_indian_perc + 
+#     white_asian_perc + total_white_perc + total_black_perc + 
+#     total_hawaiian_perc + diversity_index + his_puerto_rican_perc + 
+#     his_cuban_perc + citizen_over_18_male_perc + citizen_over_18_female_perc + 
+#     ratio_high_school_18_24 + edu_hs_perc + edu_associate_perc + 
+#     edu_bachelor_perc + edu_no_hs_18_to_24_perc + edu_less_9_over_25_perc + 
+#     edu_hs_over_25_perc + edu_bachelor_over_25_perc + edu_hs_25_to_34_perc + 
+#     edu_bachelor_25_to_34_perc + edu_bachelor_35_to_44_perc + 
+#     edu_hs_45_to_64_perc + edu_bachelor_45_to_64_perc + housing_to_population_ratio + 
+#     growth_rate_income + growth_rate_gdp + income_growth_16_17 + 
+#     income_growth_17_18 + income_growth_18_19 + income_growth_19_20 + 
+#     gdp_growth_16_17 + gender_ratio + Age_18_over_male_pct + 
+#     Age_65_over_male_pct + x2013_code_X3 + x2013_code_X4 + x2013_code_X5, 
+#     data = train) %>%
+#   step_impute_knn(all_predictors()) 
+
+# create workflow 
+xgb_workflow_untuned <- workflow() %>%
+  add_recipe(gbm_xgb_recipe) %>%
+  add_model(xgb_spec_untuned)
+
+# create 5-fold cross validation
+train_folds <- vfold_cv(train, v = 5)
+
+# fit cross validation
+xgb_crossval_fit_untuned <- 
+  xgb_workflow_untuned %>% 
+  fit_resamples(resamples = train_folds,control=control_resamples(verbose = TRUE))
+
+# collect metrics
+xgb_crossval_fit_untuned %>% collect_metrics()
+
+
+#6.99
+
+```
+
+```{r}
+
+
+```
+
+
+```{r}
+
+
+```
+
+```{r}
+##tuned xgboost model
+
+xgb_spec <- boost_tree(
+  trees = tune(), 
+  min_n = tune(), 
+  tree_depth = tune(), 
+  learn_rate = tune(), 
+  loss_reduction = tune()
+) %>%
+  set_engine('xgboost', scale_pos_weight = tune(), penalty_L2 = tune(),
+             penalty_L1 = tune(), nthread = -1) %>%
+  set_mode('regression')
+
+
+# define a range of values for xgboost hyperparameters
+trees_dist <- dials::range_set(trees(), c(100, 1000))
+min_n_dist <- dials::range_set(min_n(), c(2L, 40L))
+tree_depth_dist <- dials::range_set(tree_depth(), c(3, 10))
+learn_rate_dist <- dials::range_set(learn_rate(), range = c(-10, -1))
+loss_reduction_dist <- dials::range_set(loss_reduction(), range =c(-10, 1.5))
+scale_pos_weight <- dials::range_set(scale_pos_weight(), range =c(0.8, 1.2))
+penalty_L2_dist <- dials::range_set(penalty_L2(), range = c(-10, 1))
+penalty_L1_dist <- dials::range_set(penalty_L1(), range = c(-10, 1))
+
+
+# create a parameter space
+param_space <- parameters(
+  trees_dist, 
+  min_n_dist, 
+  tree_depth_dist,
+  learn_rate_dist,
+  loss_reduction_dist, 
+  scale_pos_weight, 
+  penalty_L2_dist, 
+  penalty_L1_dist 
+) 
+
+gbm_xgb_recipe<-gbm_recipe
+
+# create workflow 
+xgb_workflow <- workflow() %>%
+  add_recipe(gbm_xgb_recipe) %>%
+  add_model(xgb_spec)
+# randomly sample 60 combinations
+set.seed(42)
+
+# create k-fold
+train_folds <- vfold_cv(train)
+
+library(yardstick)
+
+doParallel::registerDoParallel(cores = 7)
+
+# perform cross-validation
+bayes_results <- tune_bayes(
+  xgb_workflow,
+  resamples = train_folds,  # like bootstraps or cross-validation
+  initial = 10,   # Number of initial random parameter sets
+  iter = 60,      # Total number of iterations including the initial set
+  param_info = param_space,
+  metrics = metric_set(yardstick::rmse, yardstick::rsq),
+  control = control_bayes(verbose = TRUE, save_pred = TRUE,verbose_iter = TRUE),
+)
+?tune_bayes
+
+
+# Collect metrics
+tune_results <- bayes_results %>% collect_metrics()%>%filter(.metric=="rmse")%>%arrange(mean)
+
+# Find the best hyperparameters
+best_params <- bayes_results %>% select_best("rmse")
+
+#Finalize the model
+xgboost_spec_v4_gbm <- finalize_model(xgb_spec, best_params)
+final_workflow <- workflow() %>%
+  add_recipe(gbm_xgb_recipe) %>%
+  add_model(xgboost_spec_v4_gbm )
+
+# Fit the final model
+final_fit <- final_workflow %>% fit(data = train)
+saveRDS(final_fit, "xgboost_spec_v4_gbm.rds")
+loaded_final_fit <- readRDS("xgboost_spec_v4_gbm.rds")
+
+
+xgb_spec_v4_with_l12 <- 
+  boost_tree(
+    trees = 723, 
+    min_n = 21, 
+    tree_depth = 5, 
+    learn_rate = 0.03235256, 
+    loss_reduction = 7.913817e-10
+  ) %>%
+  set_engine('xgboost', 
+             scale_pos_weight = 0.9964585	,
+             lambda =7.781635	, 
+             alpha = 0.0002102487, 
+             nthread = -1)
+
+xgb_workflow_v4 <- workflow() %>%
+  add_recipe(gbm_xgb_recipe) %>%
+  add_model(xgb_spec_v4_with_l12)
+
+```
+66.613640				
+20.559282				
+37.687893				
+34.798103				
+27.989044				
+32.444260				
+30.824961				
+21.463831				
+30.229509				
+19.174637	
+
+```{r}
+loaded_final_fit <- readRDS("final_xgboost_model.rds")
+loaded_final_fit
+predictions<-loaded_final_fit%>%predict(baked_test)%>%cbind(test%>%select(id))
+# Save to CSV file
+write.csv(predictions, "predictions.csv",row.names = FALSE)
+read.csv("predictions.csv")
+
+loaded_full_iter<-readRDS("final_xgboost_model_full_iter.rds")
+predictions<-loaded_full_iter%>%predict(baked_test)%>%cbind(test%>%select(id))
+write.csv(predictions, "xgboost_predictions.csv",row.names = FALSE)
+read.csv("xgboost_predictions.csv")
+```
+
+
+```{r}
+# Random forest spec
+rf_spec <- rand_forest(
+  mtry = tune(), trees = tune(), min_n = tune()
+  ) %>%
+  set_engine(
+  "ranger", num.threads = 7, importance = "impurity"
+  ) %>%
+  set_mode("regression")
+
+tree_rec <- recipe(percent_dem ~ ., data = train) %>% 
+  step_impute_knn(all_predictors())
+
+trees_folds <- vfold_cv(train)
+
+# Ranfom forest workflow
+rf_wf <- workflow() %>% 
+  add_recipe(tree_rec) %>%
+  add_model(rf_spec)
+
+rf_grid <- 
+  grid_latin_hypercube(
+    min_n(), 
+    mtry(range = c(30, 120)), 
+    trees(), 
+    size = 80)
+
+trees_dist <- dials::range_set(trees(), c(100, 1000))
+min_n_dist <- dials::range_set(min_n(), c(2L, 40L))
+mtry_dist <- dials::range_set(mtry(), c(30, 120))
+
+param_space <- parameters(
+  trees_dist, 
+  min_n_dist, 
+  mtry_dist
+) 
+
+set.seed(123)
+# perform cross-validation
+tune_res<- tune_bayes(
+  rf_wf,
+  resamples = trees_folds,  # like bootstraps or cross-validation
+  initial = 10,   # Number of initial random parameter sets
+  iter = 60,      # Total number of iterations including the initial set
+  param_info = param_space,
+  metrics = metric_set(rmse, rsq),
+  control = control_bayes(verbose = TRUE, save_pred = TRUE,verbose_iter = TRUE)
+)
+
+```
+
+
+
+
+```{r}
+
+library(brulee)
+
+brulee_model<-mlp(
+  hidden_units = c(4, 128, 64, 34, 1),
+  penalty = 0.01,
+  epochs = 100,
+  learn_rate = 0.01,
+  activation = 'relu'
+) %>%  
+  set_engine("brulee") %>% 
+  set_mode("regression")
+
+
+nnet_recipe <- readRDS("nnet_recipe.rds")
+
+# Prepare the recipe
+prepared_recipe <- prep(nnet_recipe, training = train)
+
+# Apply transformations to the training data
+training_data_after_bake <- bake(prepared_recipe, new_data = train)
+head(training_data_after_bake)
+
+# create k-fold
+train_folds <- vfold_cv(train, v = 10)
+
+# Create the workflow
+brulee_workflow <- workflow() %>%
+  add_recipe(nnet_recipe) %>%
+  add_model(brulee_model)
+
+# fit cross validation
+brulee_fit <-
+  brulee_workflow %>%
+  fit_resamples(resamples = train_folds)
+
+brulee_fit%>%collect_metrics()
+
+
+```
+
+
+```{r}
+
+# Load required libraries
+library(dials)
+
+penalty_dist <- dials::range_set(penalty(), c(-10, 1))
+epoch_dist <- dials::range_set(epochs(), c(20, 100))
+
+# Combine into a parameter space
+param_space <- parameters(
+  penalty_dist,
+  epoch_dist
+)
+
+# Define the model spec for nnet
+nnet_model <- 
+  mlp(hidden_units = 15,
+      penalty = tune(),
+      epochs = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("nnet")
+?mlp()
+
+?linear_reg
+# Define the recipe
+nnet_recipe<- recipe(percent_dem ~ ., data = train) %>%
+  step_mutate(
+    per_white = (x0037e / x0001e) * 100, # white race percentage
+    per_black = (x0038e / x0001e) * 100, #black race percentage
+    per_native = (x0039e / x0001e) * 100, # native race percentage
+    per_asia = (x0044e / x0001e) * 100, # asian race percentage
+    per_pacific = (x0052e / x0001e) * 100, # pacific islander race percentage
+    per_other = (x0057e / x0001e) * 100,  # other race percentage
+    per_latina = (x0071e / x0001e) * 100, # latin race percentage
+    male_perc = x0002e / x0001e, female_perc = x0003e / x0001e,
+    age_under_5_perc = x0005e / x0001e, age_5_to_9_perc = x0006e / x0001e,
+    age_10_to_14_perc = x0007e / x0001e, age_15_to_19_perc = x0008e / x0001e,
+    age_20_to_24_perc = x0009e / x0001e, age_25_to_34_perc = x0010e / x0001e,
+    age_35_to_44_perc = x0011e / x0001e, age_45_to_54_perc = x0012e / x0001e,
+    age_55_to_59_perc = x0013e / x0001e, age_60_to_64_perc = x0014e / x0001e,
+    age_65_to_74_perc = x0015e / x0001e, age_75_to_84_perc = x0016e / x0001e,
+    age_over_85_perc = x0017e / x0001e,
+    white_perc = x0037e / x0001e, black_perc = x0038e,
+    ai_cherokee_perc = x0040e / x0001e, ai_chippewa_perc = x0041e / x0001e,
+    ai_navajo_perc = x0042e / x0001e, ai_sioux_perc = x0043e / x0001e,
+    a_chinese_perc = x0046e / x0001e, a_filipino_perc = x0047e / x0001e,
+    a_japanese_perc = x0048e / x0001e, a_korean_perc = x0049e / x0001e,
+    a_vietnamese_perc = x0050e / x0001e, a_other_perc = x0051e / x0001e,
+    nh_hawaiian_perc = x0053e / x0001e, nh_chamorro_perc = x0054e / x0001e,
+    nh_samoan_perc = x0055e / x0001e, nh_other_perc = x0056e / x0001e,
+    one_race_other_perc = x0057e / x0001e,
+    white_black_perc = x0059e / x0001e, white_indian_perc = x0060e / x0001e,
+    white_asian_perc = x0061e / x0001e, black_indian_perc = x0062e / x0001e,
+    total_white_perc = x0064e / x0001e, total_black_perc = x0065e / x0001e,
+    total_indian_perc = x0066e / x0001e, total_asian_perc = x0067e / x0001e,
+    total_hawaiian_perc = x0068e / x0001e, total_other_perc = x0069e / x0001e,
+    total_hispanic_perc = x0071e / x0001e,
+    diversity_index = -(total_white_perc   * log(total_white_perc, base = exp(1))
+                        + total_black_perc  * log(total_black_perc, base = exp(1))
+                        + total_indian_perc  * log(total_indian_perc, base = exp(1))
+                        + total_asian_perc  * log(total_asian_perc, base = exp(1))
+                        + total_hawaiian_perc  * log(total_hawaiian_perc, base = exp(1))
+                        + total_other_perc  * log(total_other_perc, base = exp(1))
+                        + total_hispanic_perc  * log(total_hispanic_perc, base = exp(1))
+                        ),
+    his_mexican_perc = x0072e / x0001e, his_puerto_rican_perc = x0073e / x0001e,
+    his_cuban_perc = x0074e / x0001e, his_other_perc = x0075e / x0001e,
+    his_mexican_perc = x0072e / x0001e,
+    citizen_over_18_male_perc = x0088e / x0025e,
+    citizen_over_18_female_perc = x0089e / x0025e,
+    citizen_over_18_ratio_perc = x0087e / (x0025e),
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    edu_no_hs_perc = (c01_002e + c01_007e + c01_008e) / x0001e,
+    edu_hs_perc = (c01_003e + c01_009e + c01_010e) / x0001e,
+    edu_associate_perc = (c01_004e + c01_011e) / x0001e,
+    edu_bachelor_perc = (c01_005e + c01_015e) / x0001e,
+    edu_no_hs_18_to_24_perc = c01_002e / x0001e,
+    edu_hs_18_to_24_perc = c01_003e / x0001e,
+    edu_associate_18_to_24_perc = c01_004e / x0001e,
+    edu_bachelor_18_to_24_perc = c01_005e / x0001e,
+    edu_less_9_over_25_perc = c01_007e / x0001e,
+    edu_no_hs_over_25_perc = c01_008e / x0001e,
+    edu_hs_over_25_perc = c01_009e / x0001e,
+    edu_no_college_over_25_perc = c01_010e / x0001e,
+    edu_associate_over_25_perc = c01_011e / x0001e,
+    edu_bachelor_over_25_perc = c01_012e / x0001e,
+    edu_graduate_over_25_perc = c01_013e / x0001e,
+    edu_hs_25_to_34_perc = (c01_017e - c01_018e) / x0001e,
+    edu_bachelor_25_to_34_perc = c01_018e / x0001e,
+    edu_hs_35_to_44_perc = (c01_020e - c01_021e) / x0001e,
+    edu_bachelor_35_to_44_perc = c01_021e / x0001e,
+    edu_hs_45_to_64_perc = (c01_023e - c01_024e) / x0001e,
+    edu_bachelor_45_to_64_perc = c01_024e / x0001e,
+    edu_hs_over_65_perc = (c01_026e - c01_027e) / x0001e,
+    edu_bachelor_over_65_perc = c01_027e / x0001e,
+    housing_to_population_ratio = x0086e / x0001e,
+    growth_rate_income = (income_per_cap_2020 - income_per_cap_2016) / income_per_cap_2016,
+    growth_rate_gdp = (gdp_2020 - gdp_2016) / gdp_2016,
+    income_growth_16_17 = (income_per_cap_2017 - income_per_cap_2016) / income_per_cap_2016,
+    income_growth_17_18 = (income_per_cap_2018 - income_per_cap_2017) / income_per_cap_2017,
+    income_growth_18_19 = (income_per_cap_2019 - income_per_cap_2018) / income_per_cap_2018,
+    income_growth_19_20 = (income_per_cap_2020 - income_per_cap_2019) / income_per_cap_2019,
+    gdp_growth_16_17 = (gdp_2017 - gdp_2016) / gdp_2016,
+    gdp_growth_17_18 = (gdp_2018 - gdp_2017) / gdp_2017,
+    gdp_growth_18_19 = (gdp_2019 - gdp_2018) / gdp_2018,
+    gdp_growth_19_20 = (gdp_2020 - gdp_2019) / gdp_2019,
+    housing_density = (x0086e / x0001e) * 100,
+    gender_ratio = x0088e/x0089e,
+    Male_Pop_Percentage = (x0002e / x0001e) * 100,
+    Female_Pop_Percentage = (x0003e / x0001e) * 100,
+    Age_18_and_under = x0019e,
+    Age_18_to_34 = x0021e - (x0009e + x0010e + x0011e + x0012e + x0013e + x0014e + x0015e + x0016e + x0017e) + x0009e + x0010e,
+    Age_35_to_44 = x0011e,
+    Age_45_to_64 = x0012e + x0013e + x0014e,
+    Age_65_and_above = x0015e + x0016e + x0017e,
+    Age_18_and_under_pct = (Age_18_and_under / x0001e) * 100,
+    Age_18_to_34_pct = (Age_18_to_34 / x0001e) * 100,
+    Age_35_to_44_pct = (Age_35_to_44 / x0001e) * 100,
+    Age_45_to_64_pct = (Age_45_to_64 / x0001e) * 100,
+    Age_65_and_above_pct = (Age_65_and_above / x0001e) * 100,
+    Age_18_over_male_pct = (x0026e/x0021e) * 100,
+    Age_18_over_female_pct = (x0027e/x0021e) * 100,
+    Age_65_over_male_pct = (x0030e/x0029e) * 100,
+    Age_65_over_female_pct = (x0031e/x0029e) * 100,
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    pct_less_high_school_18_24 = c01_002e / c01_001e,
+    pct_high_school_18_24 = c01_003e / c01_001e,
+    pct_high_grad_18_24 = c01_004e / c01_001e,
+    pct_college_18_24 = c01_005e / c01_001e,
+    pct_less_9_25 = c01_007e / c01_006e,
+    pct_9_12_25 = c01_008e / c01_006e,
+    pct_high_grad_25 = c01_009e / c01_006e,
+    pct_college_25 = c01_010e / c01_006e,
+    pct_asso_25 = c01_011e / c01_006e,
+    pct_bach_25 = c01_012e / c01_006e,
+    pct_grad_25 = c01_013e / c01_006e,
+    pct_hs_higher_25 = c01_014e / c01_006e,
+    pct_bach_higher_25 = c01_015e / c01_006e,
+    pct_hs_higher_25_34 = c01_017e / c01_016e,
+    pct_bach_higher_25_34 = c01_018e / c01_016e,
+    pct_hs_higher_35_44 = c01_020e / c01_019e,
+    pct_bach_higher_35_44 = c01_021e / c01_019e,
+    pct_hs_higher_45_64 = c01_023e / c01_022e,
+    pct_bach_higher_45_64 = c01_024e / c01_022e,
+    pct_hs_higher_65 = c01_026e / c01_025e,
+    pct_bach_higher_65 = c01_027e / c01_025e,
+  )%>% step_mutate(x2013_code = as.factor(x2013_code)) %>%
+  step_dummy(x2013_code, one_hot = TRUE) %>% 
+  step_rm(id,x0002e, x0003e, x0005e, x0006e, x0007e, x0008e, x0009e, x0010e, x0011e,
+          x0012e, x0013e, x0014e, x0015e, x0016e, x0017e,x0018e, x0019e, x0020e, x0021e,
+          x0022e, x0023e, x0024e, x0025e, x0026e, x0027e, x0029e, x0030e, x0031e,
+          x0033e, x0034e, x0035e, x0036e, x0037e, x0038e, x0039e, x0040e, x0041e,
+          x0042e, x0043e, x0044e, x0045e, x0046e, x0047e, x0048e, x0049e, x0050e,
+          x0051e, x0052e, x0053e, x0054e, x0055e, x0056e, x0057e, x0058e, x0059e,
+          x0060e, x0061e, x0062e, x0064e, x0065e, x0066e, x0067e, x0068e, x0069e,
+          x0071e, x0072e, x0073e, x0074e, x0075e, x0076e, x0077e, x0078e, x0079e,
+          x0080e, x0081e, x0082e, x0083e, x0084e, x0085e, x0086e, x0087e, x0088e, x0089e,
+          c01_001e, c01_002e, c01_003e, c01_004e, c01_005e, c01_006e, c01_007e,
+          c01_008e, c01_009e, c01_010e, c01_011e, c01_012e, c01_013e, c01_014e,
+          c01_015e, c01_016e, c01_017e, c01_018e, c01_019e, c01_020e, c01_021e,
+          c01_022e, c01_023e, c01_024e, c01_025e, c01_026e,c01_027e,Age_18_and_under,Age_18_to_34,Age_35_to_44,Age_45_to_64,Age_65_and_above)%>%
+  step_impute_knn(all_predictors())%>%
+  step_lincomb(all_predictors())%>%
+  step_scale(all_numeric(), -all_outcomes(),-x2013_code_X1,-x2013_code_X2,-x2013_code_X3,-x2013_code_X4,-x2013_code_X5) %>%  # Scale numeric variables
+  step_normalize(all_numeric(), -all_outcomes(),-x2013_code_X1,-x2013_code_X2,-x2013_code_X3,-x2013_code_X4,-x2013_code_X5)%>%  # Normalize numeric variables
+   step_pca(all_predictors(), num_comp = 55)  # PCA to retain 95% variance
+
+gbm_nnet_recipe<-gbm_recipe%>%step_scale(all_numeric(), -all_outcomes(),) %>%  # Scale numeric variables
+  step_normalize(all_numeric(), -all_outcomes())%>% # Normalize numeric variables
+   step_pca(all_predictors(), num_comp = 40)
+
+# saveRDS(nnet_recipe, "nnet_recipe.rds")
+# nnet_recipe <- readRDS("nnet_recipe.rds")
+
+# Prepare the recipe
+prepared_recipe <- prep(gbm_nnet_recipe, training = train)
+
+# Apply transformations to the training data
+training_data_after_bake <- bake(prepared_recipe, new_data = train)
+head(training_data_after_bake)
+
+# create k-fold
+train_folds <- vfold_cv(train, v = 10)
+
+# Create the workflow
+nnet_workflow <- workflow() %>%
+  add_recipe(gbm_nnet_recipe) %>%
+  add_model(nnet_model)
+
+tune_res<- tune_bayes(
+  nnet_workflow,
+  resamples = train_folds,  # like bootstraps or cross-validation
+  initial = 10,   # Number of initial random parameter sets
+  iter = 60,      # Total number of iterations including the initial set
+  param_info = param_space,
+  metrics = metric_set(rmse, rsq),
+  control = control_bayes(verbose = TRUE, save_pred = TRUE,verbose_iter = TRUE)
+)
+
+# fit cross validation
+neural_fit <-
+  nnet_workflow %>%
+  fit_resamples(resamples = train_folds,control=control_resamples(verbose = TRUE))
+neural_fit%>%collect_metrics()
+
+show_notes(.Last.tune.result)
+# collect metrics
+tune_results<-tune_res %>% collect_metrics()%>%filter(.metric=="rmse")%>%arrange(mean)
+
+# Find the best hyperparameters
+best_params <- tune_res %>% select_best("rmse")
+
+
+nnet_spec <- finalize_model(nnet_model, best_params)
+final_workflow <- workflow() %>%
+  add_recipe(gbm_nnet_recipe) %>%
+  add_model(nnet_spec)
+# Fit the final model
+final_fit <- final_workflow %>% fit(data = train)
+saveRDS(final_fit, "nnet_model3.rds")
+loaded_final_fit <- readRDS("nnet_model3.rds")
+loaded_final_fit
+
+
+nnet_spec_v4_with_p <- 
+  mlp(hidden_units = 15,
+      penalty = 0.004697778,
+      epochs = 20) %>%
+  set_mode("regression") %>%
+  set_engine("nnet")
+
+nnet_workflow_v4 <- workflow() %>%
+  add_recipe(gbm_nnet_recipe) %>%
+  add_model(nnet_spec_v4_with_p)
+```
+
+```{r}
+# Define the model spec for nnet
+lm_model <- 
+  linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+train_folds <- vfold_cv(train, v = 10)
+
+#lm_recipe
+
+lm_recipe<-recipe(percent_dem~.data=train)
+
+# Create the workflow
+lm_workflow <- workflow() %>%
+  add_recipe(lm_recipe) %>%
+  add_model(lm_model)
+
+# fit cross validation
+lm_fit <-
+  lm_workflow %>%
+  fit_resamples(resamples = train_folds,control=control_resamples(verbose = TRUE))
+lml_fit%>%collect_metrics()
+```
+
+```{r}
+
+library(glmnet)
+
+# Define the model spec for glmnet
+glmnet_model <- 
+  linear_reg(penalty = tune(),mixture = tune()) %>%
+  # linear_reg(penalty = 0.01, mixture = 0.1) %>% 
+  set_mode("regression") %>% 
+  set_engine("glmnet")
+?linear_reg
+
+# Create parameter ranges for penalty and mixture
+penalty_dist <- dials::range_set(penalty(), c(-10, 1))  
+mixture_dist <- dials::range_set(mixture(), c(0, 1))
+
+# Combine into a parameter space
+param_space <- parameters(
+  penalty_dist,
+  mixture_dist
+)
+
+
+
+glmnet_recipe <- recipe(percent_dem ~ ., data = train) %>%
+  step_mutate(
+    per_white = (x0037e / x0001e) * 100, # white race percentage
+    per_black = (x0038e / x0001e) * 100, #black race percentage
+    per_native = (x0039e / x0001e) * 100, # native race percentage
+    per_asia = (x0044e / x0001e) * 100, # asian race percentage
+    per_pacific = (x0052e / x0001e) * 100, # pacific islander race percentage
+    per_other = (x0057e / x0001e) * 100,  # other race percentage
+    per_latina = (x0071e / x0001e) * 100, # latin race percentage
+    male_perc = x0002e / x0001e, female_perc = x0003e / x0001e,
+    age_under_5_perc = x0005e / x0001e, age_5_to_9_perc = x0006e / x0001e,
+    age_10_to_14_perc = x0007e / x0001e, age_15_to_19_perc = x0008e / x0001e,
+    age_20_to_24_perc = x0009e / x0001e, age_25_to_34_perc = x0010e / x0001e,
+    age_35_to_44_perc = x0011e / x0001e, age_45_to_54_perc = x0012e / x0001e,
+    age_55_to_59_perc = x0013e / x0001e, age_60_to_64_perc = x0014e / x0001e,
+    age_65_to_74_perc = x0015e / x0001e, age_75_to_84_perc = x0016e / x0001e,
+    age_over_85_perc = x0017e / x0001e,
+    white_perc = x0037e / x0001e, black_perc = x0038e,
+    ai_cherokee_perc = x0040e / x0001e, ai_chippewa_perc = x0041e / x0001e,
+    ai_navajo_perc = x0042e / x0001e, ai_sioux_perc = x0043e / x0001e,
+    a_chinese_perc = x0046e / x0001e, a_filipino_perc = x0047e / x0001e,
+    a_japanese_perc = x0048e / x0001e, a_korean_perc = x0049e / x0001e,
+    a_vietnamese_perc = x0050e / x0001e, a_other_perc = x0051e / x0001e,
+    nh_hawaiian_perc = x0053e / x0001e, nh_chamorro_perc = x0054e / x0001e,
+    nh_samoan_perc = x0055e / x0001e, nh_other_perc = x0056e / x0001e,
+    one_race_other_perc = x0057e / x0001e,
+    white_black_perc = x0059e / x0001e, white_indian_perc = x0060e / x0001e,
+    white_asian_perc = x0061e / x0001e, black_indian_perc = x0062e / x0001e,
+    total_white_perc = x0064e / x0001e, total_black_perc = x0065e / x0001e,
+    total_indian_perc = x0066e / x0001e, total_asian_perc = x0067e / x0001e,
+    total_hawaiian_perc = x0068e / x0001e, total_other_perc = x0069e / x0001e,
+    total_hispanic_perc = x0071e / x0001e,
+    diversity_index = -(total_white_perc   * log(total_white_perc, base = exp(1))
+                        + total_black_perc  * log(total_black_perc, base = exp(1))
+                        + total_indian_perc  * log(total_indian_perc, base = exp(1))
+                        + total_asian_perc  * log(total_asian_perc, base = exp(1))
+                        + total_hawaiian_perc  * log(total_hawaiian_perc, base = exp(1))
+                        + total_other_perc  * log(total_other_perc, base = exp(1))
+                        + total_hispanic_perc  * log(total_hispanic_perc, base = exp(1))
+                        ),
+    his_mexican_perc = x0072e / x0001e, his_puerto_rican_perc = x0073e / x0001e,
+    his_cuban_perc = x0074e / x0001e, his_other_perc = x0075e / x0001e,
+    his_mexican_perc = x0072e / x0001e,
+    citizen_over_18_male_perc = x0088e / x0025e,
+    citizen_over_18_female_perc = x0089e / x0025e,
+    citizen_over_18_ratio_perc = x0087e / (x0025e),
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    edu_no_hs_perc = (c01_002e + c01_007e + c01_008e) / x0001e,
+    edu_hs_perc = (c01_003e + c01_009e + c01_010e) / x0001e,
+    edu_associate_perc = (c01_004e + c01_011e) / x0001e,
+    edu_bachelor_perc = (c01_005e + c01_015e) / x0001e,
+    edu_no_hs_18_to_24_perc = c01_002e / x0001e,
+    edu_hs_18_to_24_perc = c01_003e / x0001e,
+    edu_associate_18_to_24_perc = c01_004e / x0001e,
+    edu_bachelor_18_to_24_perc = c01_005e / x0001e,
+    edu_less_9_over_25_perc = c01_007e / x0001e,
+    edu_no_hs_over_25_perc = c01_008e / x0001e,
+    edu_hs_over_25_perc = c01_009e / x0001e,
+    edu_no_college_over_25_perc = c01_010e / x0001e,
+    edu_associate_over_25_perc = c01_011e / x0001e,
+    edu_bachelor_over_25_perc = c01_012e / x0001e,
+    edu_graduate_over_25_perc = c01_013e / x0001e,
+    edu_hs_25_to_34_perc = (c01_017e - c01_018e) / x0001e,
+    edu_bachelor_25_to_34_perc = c01_018e / x0001e,
+    edu_hs_35_to_44_perc = (c01_020e - c01_021e) / x0001e,
+    edu_bachelor_35_to_44_perc = c01_021e / x0001e,
+    edu_hs_45_to_64_perc = (c01_023e - c01_024e) / x0001e,
+    edu_bachelor_45_to_64_perc = c01_024e / x0001e,
+    edu_hs_over_65_perc = (c01_026e - c01_027e) / x0001e,
+    edu_bachelor_over_65_perc = c01_027e / x0001e,
+    housing_to_population_ratio = x0086e / x0001e,
+    growth_rate_income = (income_per_cap_2020 - income_per_cap_2016) / income_per_cap_2016,
+    growth_rate_gdp = (gdp_2020 - gdp_2016) / gdp_2016,
+    income_growth_16_17 = (income_per_cap_2017 - income_per_cap_2016) / income_per_cap_2016,
+    income_growth_17_18 = (income_per_cap_2018 - income_per_cap_2017) / income_per_cap_2017,
+    income_growth_18_19 = (income_per_cap_2019 - income_per_cap_2018) / income_per_cap_2018,
+    income_growth_19_20 = (income_per_cap_2020 - income_per_cap_2019) / income_per_cap_2019,
+    gdp_growth_16_17 = (gdp_2017 - gdp_2016) / gdp_2016,
+    gdp_growth_17_18 = (gdp_2018 - gdp_2017) / gdp_2017,
+    gdp_growth_18_19 = (gdp_2019 - gdp_2018) / gdp_2018,
+    gdp_growth_19_20 = (gdp_2020 - gdp_2019) / gdp_2019,
+    housing_density = (x0086e / x0001e) * 100,
+    gender_ratio = x0088e/x0089e,
+    Male_Pop_Percentage = (x0002e / x0001e) * 100,
+    Female_Pop_Percentage = (x0003e / x0001e) * 100,
+    Age_18_and_under = x0019e,
+    Age_18_to_34 = x0021e - (x0009e + x0010e + x0011e + x0012e + x0013e + x0014e + x0015e + x0016e + x0017e) + x0009e + x0010e,
+    Age_35_to_44 = x0011e,
+    Age_45_to_64 = x0012e + x0013e + x0014e,
+    Age_65_and_above = x0015e + x0016e + x0017e,
+    Age_18_and_under_pct = (Age_18_and_under / x0001e) * 100,
+    Age_18_to_34_pct = (Age_18_to_34 / x0001e) * 100,
+    Age_35_to_44_pct = (Age_35_to_44 / x0001e) * 100,
+    Age_45_to_64_pct = (Age_45_to_64 / x0001e) * 100,
+    Age_65_and_above_pct = (Age_65_and_above / x0001e) * 100,
+    Age_18_over_male_pct = (x0026e/x0021e) * 100,
+    Age_18_over_female_pct = (x0027e/x0021e) * 100,
+    Age_65_over_male_pct = (x0030e/x0029e) * 100,
+    Age_65_over_female_pct = (x0031e/x0029e) * 100,
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    pct_less_high_school_18_24 = c01_002e / c01_001e,
+    pct_high_school_18_24 = c01_003e / c01_001e,
+    pct_high_grad_18_24 = c01_004e / c01_001e,
+    pct_college_18_24 = c01_005e / c01_001e,
+    pct_less_9_25 = c01_007e / c01_006e,
+    pct_9_12_25 = c01_008e / c01_006e,
+    pct_high_grad_25 = c01_009e / c01_006e,
+    pct_college_25 = c01_010e / c01_006e,
+    pct_asso_25 = c01_011e / c01_006e,
+    pct_bach_25 = c01_012e / c01_006e,
+    pct_grad_25 = c01_013e / c01_006e,
+    pct_hs_higher_25 = c01_014e / c01_006e,
+    pct_bach_higher_25 = c01_015e / c01_006e,
+    pct_hs_higher_25_34 = c01_017e / c01_016e,
+    pct_bach_higher_25_34 = c01_018e / c01_016e,
+    pct_hs_higher_35_44 = c01_020e / c01_019e,
+    pct_bach_higher_35_44 = c01_021e / c01_019e,
+    pct_hs_higher_45_64 = c01_023e / c01_022e,
+    pct_bach_higher_45_64 = c01_024e / c01_022e,
+    pct_hs_higher_65 = c01_026e / c01_025e,
+    pct_bach_higher_65 = c01_027e / c01_025e,
+  )%>%
+  step_rm(id,x0002e, x0003e, x0005e, x0006e, x0007e, x0008e, x0009e, x0010e, x0011e,
+          x0012e, x0013e, x0014e, x0015e, x0016e, x0017e,x0018e, x0019e, x0020e, x0021e,
+          x0022e, x0023e, x0024e, x0025e, x0026e, x0027e, x0029e, x0030e, x0031e,
+          x0033e, x0034e, x0035e, x0036e, x0037e, x0038e, x0039e, x0040e, x0041e,
+          x0042e, x0043e, x0044e, x0045e, x0046e, x0047e, x0048e, x0049e, x0050e,
+          x0051e, x0052e, x0053e, x0054e, x0055e, x0056e, x0057e, x0058e, x0059e,
+          x0060e, x0061e, x0062e, x0064e, x0065e, x0066e, x0067e, x0068e, x0069e,
+          x0071e, x0072e, x0073e, x0074e, x0075e, x0076e, x0077e, x0078e, x0079e,
+          x0080e, x0081e, x0082e, x0083e, x0084e, x0085e, x0086e, x0087e, x0088e, x0089e,
+          c01_001e, c01_002e, c01_003e, c01_004e, c01_005e, c01_006e, c01_007e,
+          c01_008e, c01_009e, c01_010e, c01_011e, c01_012e, c01_013e, c01_014e,
+          c01_015e, c01_016e, c01_017e, c01_018e, c01_019e, c01_020e, c01_021e,
+          c01_022e, c01_023e, c01_024e, c01_025e,x2013_code, c01_026e,c01_027e,Age_18_and_under,Age_18_to_34,Age_35_to_44,Age_45_to_64,Age_65_and_above)%>%
+  step_impute_knn(all_predictors())%>%
+  step_lincomb(all_predictors())%>%
+  step_BoxCox(all_numeric(),-all_outcomes())%>%
+  step_pca(all_predictors(), num_comp = 115)  
+
+
+gbm_glmnet_recipe<-gbm_recipe %>% 
+  step_BoxCox(all_numeric(),-all_outcomes())%>%# Normalize numeric variables
+  step_pca(all_predictors(), num_comp = 41)
+
+prepared_recipe <- prep(gbm_glmnet_recipe, training = train)
+# 
+training_data_after_bake <- bake(prepared_recipe, new_data = train)
+head(training_data_after_bake)
+summary(lm(percent_dem~.,training_data_after_bake))
+
+train_folds <- vfold_cv(train, v = 10)
+
+# Create the workflow for glmnet
+glmnet_workflow <- workflow() %>%
+  add_recipe(gbm_glmnet_recipe) %>%
+  add_model(glmnet_model)
+
+# # fit cross validation
+# glmnet_fit <-
+#   glmnet_workflow %>%
+#   fit_resamples(resamples = train_folds,control = control_resamples(verbose = TRUE))
+# 
+# glmnet_fit %>% collect_metrics()
+
+tune_res<- tune_bayes(
+  glmnet_workflow,
+  resamples = train_folds,  # like bootstraps or cross-validation
+  initial = 10,   # Number of initial random parameter sets
+  iter = 60,      # Total number of iterations including the initial set
+  param_info = param_space,
+  metrics = metric_set(rmse, rsq),
+  control = control_bayes(verbose = TRUE, save_pred = TRUE,verbose_iter = TRUE)
+)
+
+# collect metrics
+tune_results<-tune_res %>% collect_metrics()%>%filter(.metric=="rmse")%>%arrange(mean)
+
+# Find the best hyperparameters
+best_params <- tune_res %>% select_best("rmse")
+
+
+#Finalize the model
+glmnet_spec <- finalize_model(glmnet_model, best_params)
+final_workflow <- workflow() %>%
+  add_recipe(gbm_glmnet_recipe) %>%
+  add_model(glmnet_spec)
+# Fit the final model
+final_fit <- final_workflow %>% fit(data = train)
+saveRDS(final_fit, "glmnet_model2.rds")
+loaded_final_fit <- readRDS("glmnet_model2.rds")
+loaded_final_fit
+#8.3991503	
+#7.8215358
+#7.74
+#7.20
+#6.91
+
+glmnet_spec_v4_with_p <- 
+  linear_reg(penalty = 0.001662461	, mixture = 0.1187012655) %>% 
+  set_mode("regression") %>% 
+  set_engine("glmnet")
+
+glmnet_workflow_v4 <- workflow() %>%
+  add_recipe(gbm_glmnet_recipe) %>%
+  add_model(glmnet_spec_v4_with_p)
+```
+
+```{r}
+
+grid_list <- list(
+  nnet = nnet_grid,
+  glm = glmnet_grid
+)
+
+# Create workflow set
+wflow_set <- workflow_set(
+  preproc = list(complicated = nnet_recipe,  simple = glmnet_recipe 
+  ),
+  models = list(glmnet = glmnet_model, nnet = nnet_model
+  ),
+  cross = TRUE
+)
+
+
+# Create workflow map with tune_bayes
+set.seed(42)
+tune_results <- wflow_set %>%
+  workflow_map(
+    "tune_bayes",
+    resamples = train_folds,
+    metrics = metric_set(rmse, rsq),
+    # control = control_grid(verbose = TRUE, save_pred = TRUE),
+    control = control_bayes(verbose = TRUE, save_pred = TRUE),
+    iter = 100,  # Number of iterations for Bayesian optimization
+    initial = 20,  # Number of initial random samples
+    seed = 42
+  )
+tune_results%>%autoplot()
+rank_results(tune_results, rank_metric = "rmse", select_best = TRUE) %>%
+select(rank, mean, model, wflow_id, .config)
+```
+
+
+
+

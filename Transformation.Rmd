@@ -1,0 +1,276 @@
+---
+title: "aggregate"
+author: "Angelina Sun 305739059"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(knitr)
+library(tidyverse)
+library(tidymodels)
+train <- read_csv('train.csv', show_col_types = FALSE)
+train <- subset(train, select = -name)
+```
+
+```{r}
+baseline_recipe<-recipe(percent_dem ~ ., train) %>%
+  step_mutate(
+    
+    # Race & Ethnicity
+    per_white = (x0037e / x0001e) * 100, # white race percentage
+    per_black = (x0038e / x0001e) * 100, #black race percentage
+    per_native = (x0039e / x0001e) * 100, # native race percentage
+    per_asia = (x0044e / x0001e) * 100, # asian race percentage
+    per_pacific = (x0052e / x0001e) * 100, # pacific islander race percentage 
+    per_other = (x0057e / x0001e) * 100,  # other race percentage
+    per_latina = (x0071e / x0001e) * 100, # latin race percentage
+    white_perc = x0037e / x0001e, black_perc = x0038e / x0001e,
+    ai_cherokee_perc = x0040e / x0001e, ai_chippewa_perc = x0041e / x0001e,
+    ai_navajo_perc = x0042e / x0001e, ai_sioux_perc = x0043e / x0001e, 
+    a_chinese_perc = x0046e / x0001e, a_filipino_perc = x0047e / x0001e, 
+    a_japanese_perc = x0048e / x0001e, a_korean_perc = x0049e / x0001e, 
+    a_vietnamese_perc = x0050e / x0001e, a_other_perc = x0051e / x0001e, 
+    nh_hawaiian_perc = x0053e / x0001e, nh_chamorro_perc = x0054e / x0001e,
+    nh_samoan_perc = x0055e / x0001e, nh_other_perc = x0056e / x0001e,
+    one_race_other_perc = x0057e / x0001e, 
+    white_black_perc = x0059e / x0001e, white_indian_perc = x0060e / x0001e,
+    white_asian_perc = x0061e / x0001e, black_indian_perc = x0062e / x0001e,
+    total_white_perc = x0064e / x0001e, total_black_perc = x0065e / x0001e,
+    total_indian_perc = x0066e / x0001e, total_asian_perc = x0067e / x0001e,
+    total_hawaiian_perc = x0068e / x0001e, total_other_perc = x0069e / x0001e,
+    total_hispanic_perc = x0071e / x0001e, 
+    his_mexican_perc = x0072e / x0001e, his_puerto_rican_perc = x0073e / x0001e,
+    his_cuban_perc = x0074e / x0001e, his_other_perc = x0075e / x0001e, 
+    his_mexican_perc = x0072e / x0001e, 
+    
+    
+    # Diversity Index
+    diversity_index = -(total_white_perc   * log(total_white_perc, base = exp(1))
+                        + total_black_perc  * log(total_black_perc, base = exp(1))
+                        + total_indian_perc  * log(total_indian_perc, base = exp(1))
+                        + total_asian_perc  * log(total_asian_perc, base = exp(1))
+                        + total_hawaiian_perc  * log(total_hawaiian_perc, base = exp(1))
+                        + total_other_perc  * log(total_other_perc, base = exp(1))
+                        + total_hispanic_perc  * log(total_hispanic_perc, base = exp(1))
+                        ),
+    
+    # Gender 
+    citizen_over_18_male_perc = x0088e / x0025e, 
+    citizen_over_18_female_perc = x0089e / x0025e, 
+    citizen_over_18_ratio_perc = x0087e / (x0025e),
+    gender_ratio = x0088e/x0089e,
+    Male_Pop_Percentage = (x0002e / x0001e) * 100,
+    Female_Pop_Percentage = (x0003e / x0001e) * 100,
+    Age_18_over_male_pct = (x0026e/x0021e) * 100,
+    Age_18_over_female_pct = (x0027e/x0021e) * 100,
+    Age_65_over_male_pct = (x0030e/x0029e) * 100,
+    Age_65_over_female_pct = (x0031e/x0029e) * 100,
+    male_perc = x0002e / x0001e, female_perc = x0003e / x0001e, 
+    
+  
+    
+    # Education
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    edu_no_hs_perc = (c01_002e + c01_007e + c01_008e) / x0001e, 
+    edu_hs_perc = (c01_003e + c01_009e + c01_010e) / x0001e, 
+    edu_associate_perc = (c01_004e + c01_011e) / x0001e,
+    edu_bachelor_perc = (c01_005e + c01_015e) / x0001e, 
+    edu_no_hs_18_to_24_perc = c01_002e / x0001e, 
+    edu_hs_18_to_24_perc = c01_003e / x0001e,
+    edu_associate_18_to_24_perc = c01_004e / x0001e,
+    edu_bachelor_18_to_24_perc = c01_005e / x0001e,
+    edu_less_9_over_25_perc = c01_007e / x0001e,
+    edu_no_hs_over_25_perc = c01_008e / x0001e,
+    edu_hs_over_25_perc = c01_009e / x0001e,
+    edu_no_college_over_25_perc = c01_010e / x0001e,
+    edu_associate_over_25_perc = c01_011e / x0001e,
+    edu_bachelor_over_25_perc = c01_012e / x0001e,
+    edu_graduate_over_25_perc = c01_013e / x0001e,
+    edu_hs_25_to_34_perc = (c01_017e - c01_018e) / x0001e, 
+    edu_bachelor_25_to_34_perc = c01_018e / x0001e, 
+    edu_hs_35_to_44_perc = (c01_020e - c01_021e) / x0001e, 
+    edu_bachelor_35_to_44_perc = c01_021e / x0001e, 
+    edu_hs_45_to_64_perc = (c01_023e - c01_024e) / x0001e, 
+    edu_bachelor_45_to_64_perc = c01_024e / x0001e, 
+    edu_hs_over_65_perc = (c01_026e - c01_027e) / x0001e, 
+    edu_bachelor_over_65_perc = c01_027e / x0001e, 
+    ratio_high_school_18_24 = c01_003e / c01_001e,
+    pct_less_high_school_18_24 = c01_002e / c01_001e,
+    pct_high_school_18_24 = c01_003e / c01_001e,
+    pct_high_grad_18_24 = c01_004e / c01_001e,
+    pct_college_18_24 = c01_005e / c01_001e,
+    pct_less_9_25 = c01_007e / c01_006e,
+    pct_9_12_25 = c01_008e / c01_006e,
+    pct_high_grad_25 = c01_009e / c01_006e,
+    pct_college_25 = c01_010e / c01_006e,
+    pct_asso_25 = c01_011e / c01_006e,
+    pct_bach_25 = c01_012e / c01_006e,
+    pct_grad_25 = c01_013e / c01_006e,
+    pct_hs_higher_25 = c01_014e / c01_006e,
+    pct_bach_higher_25 = c01_015e / c01_006e,
+    pct_hs_higher_25_34 = c01_017e / c01_016e,
+    pct_bach_higher_25_34 = c01_018e / c01_016e,
+    pct_hs_higher_35_44 = c01_020e / c01_019e,
+    pct_bach_higher_35_44 = c01_021e / c01_019e,
+    pct_hs_higher_45_64 = c01_023e / c01_022e,
+    pct_bach_higher_45_64 = c01_024e / c01_022e,
+    pct_hs_higher_65 = c01_026e / c01_025e,
+    pct_bach_higher_65 = c01_027e / c01_025e,
+    
+    
+    # Housing density
+    housing_to_population_ratio = x0086e / x0001e, 
+    housing_density = (x0086e / x0001e) * 100,   
+    
+    #Income & GDP
+    growth_rate_income = (income_per_cap_2020 - income_per_cap_2016) / income_per_cap_2016, 
+    growth_rate_gdp = (gdp_2020 - gdp_2016) / gdp_2016, 
+    income_growth_16_17 = (income_per_cap_2017 - income_per_cap_2016) / income_per_cap_2016, 
+    income_growth_17_18 = (income_per_cap_2018 - income_per_cap_2017) / income_per_cap_2017, 
+    income_growth_18_19 = (income_per_cap_2019 - income_per_cap_2018) / income_per_cap_2018, 
+    income_growth_19_20 = (income_per_cap_2020 - income_per_cap_2019) / income_per_cap_2019, 
+    gdp_growth_16_17 = (gdp_2017 - gdp_2016) / gdp_2016, 
+    gdp_growth_17_18 = (gdp_2018 - gdp_2017) / gdp_2017, 
+    gdp_growth_18_19 = (gdp_2019 - gdp_2018) / gdp_2018, 
+    gdp_growth_19_20 = (gdp_2020 - gdp_2019) / gdp_2019,
+    
+    #Age 
+    Age_18_and_under = x0019e,
+    Age_18_to_34 = x0021e - (x0009e + x0010e + x0011e + x0012e + x0013e + x0014e + x0015e + x0016e + x0017e) + x0009e + x0010e,
+    Age_35_to_44 = x0011e,
+    Age_45_to_64 = x0012e + x0013e + x0014e,
+    Age_65_and_above = x0015e + x0016e + x0017e,
+    Age_18_and_under_pct = (Age_18_and_under / x0001e) * 100,
+    Age_18_to_34_pct = (Age_18_to_34 / x0001e) * 100,
+    Age_35_to_44_pct = (Age_35_to_44 / x0001e) * 100,
+    Age_45_to_64_pct = (Age_45_to_64 / x0001e) * 100,
+    Age_65_and_above_pct = (Age_65_and_above / x0001e) * 100,
+    age_under_5_perc = x0005e / x0001e, age_5_to_9_perc = x0006e / x0001e, 
+    age_10_to_14_perc = x0007e / x0001e, age_15_to_19_perc = x0008e / x0001e, 
+    age_20_to_24_perc = x0009e / x0001e, age_25_to_34_perc = x0010e / x0001e, 
+    age_35_to_44_perc = x0011e / x0001e, age_45_to_54_perc = x0012e / x0001e, 
+    age_55_to_59_perc = x0013e / x0001e, age_60_to_64_perc = x0014e / x0001e, 
+    age_65_to_74_perc = x0015e / x0001e, age_75_to_84_perc = x0016e / x0001e, 
+    age_over_85_perc = x0017e / x0001e, 
+    
+  )%>%
+  step_rm(id,x0002e, x0003e, x0005e, x0006e, x0007e, x0008e, x0009e, x0010e, x0011e, 
+          x0012e, x0013e, x0014e, x0015e, x0016e, x0017e,x0018e, x0019e, x0020e, x0021e, 
+          x0022e, x0023e, x0024e, x0025e, x0026e, x0027e, x0029e, x0030e, x0031e, 
+          x0033e, x0034e, x0035e, x0036e, x0037e, x0038e, x0039e, x0040e, x0041e,
+          x0042e, x0043e, x0044e, x0045e, x0046e, x0047e, x0048e, x0049e, x0050e, 
+          x0051e, x0052e, x0053e, x0054e, x0055e, x0056e, x0057e, x0058e, x0059e,
+          x0060e, x0061e, x0062e, x0064e, x0065e, x0066e, x0067e, x0068e, x0069e, 
+          x0071e, x0072e, x0073e, x0074e, x0075e, x0076e, x0077e, x0078e, x0079e, 
+          x0080e, x0081e, x0082e, x0083e, x0084e, x0085e, x0086e, x0087e, x0088e, x0089e, 
+          c01_001e, c01_002e, c01_003e, c01_004e, c01_005e, c01_006e, c01_007e, 
+          c01_008e, c01_009e, c01_010e, c01_011e, c01_012e, c01_013e, c01_014e, 
+          c01_015e, c01_016e, c01_017e, c01_018e, c01_019e, c01_020e, c01_021e, 
+          c01_022e, c01_023e, c01_024e, c01_025e, c01_026e,c01_027e,Age_18_and_under,Age_18_to_34,Age_35_to_44,Age_45_to_64,Age_65_and_above,#for residual plot after
+          growth_rate_income,growth_rate_gdp,income_growth_16_17,income_growth_17_18,income_growth_18_19,
+          income_growth_19_20,gdp_growth_16_17,gdp_growth_17_18,gdp_growth_18_19,gdp_growth_19_20)%>%
+  step_impute_knn(all_predictors())%>%
+  step_mutate(x2013_code = as.factor(x2013_code)) %>%
+  step_dummy(x2013_code, one_hot = TRUE)%>%step_lincomb(all_predictors())
+
+  prep_rec <- prep(baseline_recipe)
+  train<-juice(prep_rec)
+  
+```
+
+```{r}
+train<- train+0.000001
+
+percent_dem <- train$percent_dem
+
+model_before <- lm(percent_dem ~ ., data = train)
+
+par(mfrow = c(2, 2))
+plot(model_before)
+invResPlot(model_before)
+summary(model_before)
+
+
+```
+
+```{r}
+# Initialize an empty list to store lambda values
+optimal_lambdas <- list()
+
+# Loop through each variable and find the optimal lambda
+for (variable_name in colnames(train)) {
+  # Extract the variable
+  variable <- train[[variable_name]]
+  
+  # Find the optimal lambda for the variable
+  transform_params <- powerTransform(variable ~ 1)
+  
+  # Store the lambda value in the list
+  optimal_lambdas[[variable_name]] <- transform_params$roundlam
+}
+```
+
+```{r}
+new_train <- train ^ optimal_lambdas
+#sampled_train <- new_train[sample(nrow(new_train), 50), ]
+new_train$percent_dem <- percent_dem
+model_after <- lm(percent_dem ~ ., data = new_train)
+
+par(mfrow = c(2, 2))
+plot(model_after)
+summary(model_after)
+```
+```{r}
+# Old Data 
+
+# Define the model spec for nnet
+lm_model <- 
+  linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+train_folds <- vfold_cv(train, v = 10)
+
+#lm_recipe
+
+lm_recipe<-recipe(percent_dem~.,data=train)
+
+# Create the workflow
+lm_workflow <- workflow() %>%
+  add_recipe(lm_recipe) %>%
+  add_model(lm_model)
+
+# fit cross validation
+lm_fit <-
+  lm_workflow %>%
+  fit_resamples(resamples = train_folds,control=control_resamples(verbose = TRUE))
+lm_fit%>%collect_metrics()
+```
+
+```{r}
+# New Data
+# Define the model spec for nnet
+lm_model <- 
+  linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+train_folds <- vfold_cv(new_train, v = 10)
+
+#lm_recipe
+
+lm_recipe<-recipe(percent_dem~.,data=new_train)
+
+# Create the workflow
+lm_workflow <- workflow() %>%
+  add_recipe(lm_recipe) %>%
+  add_model(lm_model)
+
+# fit cross validation
+lm_fit <-
+  lm_workflow %>%
+  fit_resamples(resamples = train_folds,control=control_resamples(verbose = TRUE))
+lm_fit%>%collect_metrics()
+```
+

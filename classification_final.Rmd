@@ -1,0 +1,621 @@
+---
+title: "classification_final"
+author: "Jun Yu Chen"
+date: "9/8/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+# Load Library and dataframes
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+library(ISLR)
+library(dplyr)
+```
+
+```{r}
+columns_descriptions<-read.csv('metadata.csv')
+train<-read.csv('train2.csv')
+test <- read.csv("test2.csv")
+names(train)
+```
+
+
+
+```{r cars}
+scrap_recipe <- recipe(action_taken ~ ., data = train) %>%
+  step_mutate(is_hispanic_applicant = case_when(
+    ethnicity_of_applicant_or_borrower_1 == 2 ~ 0, 
+    ethnicity_of_applicant_or_borrower_2 == 2 ~ 0,
+    ethnicity_of_applicant_or_borrower_1 == 1 ~ 1,
+    ethnicity_of_applicant_or_borrower_2 == 1 ~ 1,
+    TRUE ~ NA
+  ), 
+  ethnicity_applicant = case_when(
+    ethnicity_of_applicant_or_borrower_1 == 11 ~ 0, 
+    ethnicity_of_applicant_or_borrower_2 == 11 ~ 0,
+    ethnicity_of_applicant_or_borrower_1 == 12 ~ 1, 
+    ethnicity_of_applicant_or_borrower_2 == 12 ~ 1,
+    ethnicity_of_applicant_or_borrower_1 == 13 ~ 2, 
+    ethnicity_of_applicant_or_borrower_2 == 13 ~ 2,
+    ethnicity_of_applicant_or_borrower_1 == 14 ~ 3, 
+    ethnicity_of_applicant_or_borrower_2 == 14 ~ 3,
+    TRUE ~ NA
+  ), 
+  is_hispanic_co_applicant = case_when(
+    ethnicity_of_co_applicant_or_co_borrower_1 == 2 ~ 0, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 2 ~ 0,
+    ethnicity_of_co_applicant_or_co_borrower_1 == 1 ~ 1,
+    ethnicity_of_co_applicant_or_co_borrower_2 == 1 ~ 1,
+    TRUE ~ NA
+  ),
+  
+  ethnicity_co_applicant = case_when(
+    ethnicity_of_co_applicant_or_co_borrower_1 == 11 ~ 0, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 11 ~ 0,
+    ethnicity_of_co_applicant_or_co_borrower_1 == 12 ~ 1, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 12 ~ 1,
+    ethnicity_of_co_applicant_or_co_borrower_1 == 13 ~ 2, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 13 ~ 2,
+    ethnicity_of_co_applicant_or_co_borrower_1 == 14 ~ 3, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 14 ~ 3,
+    TRUE ~ NA
+  ), 
+  
+  race_applicant = case_when(
+    race_of_applicant_or_borrower_3 == 6 ~ NA, 
+    race_of_applicant_or_borrower_2 == 6 ~ NA, 
+    race_of_applicant_or_borrower_1 == 6 ~ NA, 
+    race_of_applicant_or_borrower_3 == 7 ~ NA, 
+    race_of_applicant_or_borrower_2 == 7 ~ NA, 
+    race_of_applicant_or_borrower_1 == 7 ~ NA, 
+    
+    race_of_applicant_or_borrower_3 == 2 ~ 2, 
+    race_of_applicant_or_borrower_3 == 21 ~ 2, 
+    race_of_applicant_or_borrower_3 == 22 ~ 2, 
+    race_of_applicant_or_borrower_3 == 23 ~ 2, 
+    race_of_applicant_or_borrower_3 == 24 ~ 2, 
+    race_of_applicant_or_borrower_3 == 25 ~ 2, 
+    race_of_applicant_or_borrower_3 == 26 ~ 2, 
+    race_of_applicant_or_borrower_3 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_3 == 4 ~ 4,
+    race_of_applicant_or_borrower_3 == 41 ~ 4, 
+    race_of_applicant_or_borrower_3 == 42 ~ 4,
+    race_of_applicant_or_borrower_3 == 43 ~ 4,
+    race_of_applicant_or_borrower_3 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_3 == 1 ~ 1, 
+    race_of_applicant_or_borrower_3 == 3 ~ 3, 
+    race_of_applicant_or_borrower_3 == 5 ~ 5, 
+    
+    race_of_applicant_or_borrower_2 == 2 ~ 2, 
+    race_of_applicant_or_borrower_2 == 21 ~ 2, 
+    race_of_applicant_or_borrower_2 == 22 ~ 2, 
+    race_of_applicant_or_borrower_2 == 23 ~ 2, 
+    race_of_applicant_or_borrower_2 == 24 ~ 2, 
+    race_of_applicant_or_borrower_2 == 25 ~ 2, 
+    race_of_applicant_or_borrower_2 == 26 ~ 2, 
+    race_of_applicant_or_borrower_2 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_2 == 4 ~ 4,
+    race_of_applicant_or_borrower_2 == 41 ~ 4, 
+    race_of_applicant_or_borrower_2 == 42 ~ 4,
+    race_of_applicant_or_borrower_2 == 43 ~ 4,
+    race_of_applicant_or_borrower_2 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_2 == 1 ~ 1, 
+    race_of_applicant_or_borrower_2 == 3 ~ 3, 
+    race_of_applicant_or_borrower_2 == 5 ~ 5, 
+    
+    race_of_applicant_or_borrower_1 == 21 ~ 2, 
+    race_of_applicant_or_borrower_1 == 22 ~ 2, 
+    race_of_applicant_or_borrower_1 == 23 ~ 2, 
+    race_of_applicant_or_borrower_1 == 24 ~ 2, 
+    race_of_applicant_or_borrower_1 == 25 ~ 2, 
+    race_of_applicant_or_borrower_1 == 26 ~ 2, 
+    race_of_applicant_or_borrower_1 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_1 == 41 ~ 4, 
+    race_of_applicant_or_borrower_1 == 42 ~ 4,
+    race_of_applicant_or_borrower_1 == 43 ~ 4,
+    race_of_applicant_or_borrower_1 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_1 == 1 ~ 1, 
+    race_of_applicant_or_borrower_1 == 3 ~ 3, 
+    race_of_applicant_or_borrower_1 == 5 ~ 5, 
+    
+    TRUE ~ NA
+  ), 
+  race_co_applicant = case_when(
+    race_of_co_applicant_or_co_borrower_3 == 6 ~ NA, 
+    race_of_co_applicant_or_co_borrower_2 == 6 ~ NA, 
+    race_of_co_applicant_or_co_borrower_1 == 6 ~ NA, 
+    race_of_co_applicant_or_co_borrower_3 == 7 ~ NA, 
+    race_of_co_applicant_or_co_borrower_2 == 7 ~ NA, 
+    race_of_co_applicant_or_co_borrower_1 == 7 ~ NA, 
+    
+    race_of_co_applicant_or_co_borrower_3 == 2 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 21 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 22 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 23 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 24 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 25 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 26 ~ 2, 
+    race_of_co_applicant_or_co_borrower_3 == 27 ~ 2, 
+    
+    race_of_co_applicant_or_co_borrower_3 == 4 ~ 4,
+    race_of_co_applicant_or_co_borrower_3 == 41 ~ 4, 
+    race_of_co_applicant_or_co_borrower_3 == 42 ~ 4,
+    race_of_co_applicant_or_co_borrower_3 == 43 ~ 4,
+    race_of_co_applicant_or_co_borrower_3 == 44 ~ 4,
+    
+    race_of_co_applicant_or_co_borrower_3 == 1 ~ 1, 
+    race_of_co_applicant_or_co_borrower_3 == 3 ~ 3, 
+    race_of_co_applicant_or_co_borrower_3 == 5 ~ 5, 
+    
+    race_of_co_applicant_or_co_borrower_2 == 2 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 21 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 22 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 23 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 24 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 25 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 26 ~ 2, 
+    race_of_co_applicant_or_co_borrower_2 == 27 ~ 2, 
+    
+    race_of_co_applicant_or_co_borrower_2 == 4 ~ 4,
+    race_of_co_applicant_or_co_borrower_2 == 41 ~ 4, 
+    race_of_co_applicant_or_co_borrower_2 == 42 ~ 4,
+    race_of_co_applicant_or_co_borrower_2 == 43 ~ 4,
+    race_of_co_applicant_or_co_borrower_2 == 44 ~ 4,
+    
+    race_of_co_applicant_or_co_borrower_2 == 1 ~ 1, 
+    race_of_co_applicant_or_co_borrower_2 == 3 ~ 3, 
+    race_of_co_applicant_or_co_borrower_2 == 5 ~ 5, 
+    
+    race_of_co_applicant_or_co_borrower_1 == 21 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 22 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 23 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 24 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 25 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 26 ~ 2, 
+    race_of_co_applicant_or_co_borrower_1 == 27 ~ 2, 
+    
+    race_of_co_applicant_or_co_borrower_1 == 41 ~ 4, 
+    race_of_co_applicant_or_co_borrower_1 == 42 ~ 4,
+    race_of_co_applicant_or_co_borrower_1 == 43 ~ 4,
+    race_of_co_applicant_or_co_borrower_1 == 44 ~ 4,
+    
+    race_of_co_applicant_or_co_borrower_1 == 1 ~ 1, 
+    race_of_co_applicant_or_co_borrower_1 == 3 ~ 3, 
+    race_of_co_applicant_or_co_borrower_1 == 5 ~ 5, 
+    
+    TRUE ~ NA
+  ), 
+  loan_type=as.integer(as.factor(loan_type)),
+  loan_purpose=as.integer(as.factor(loan_purpose)),
+  construction_method=as.integer(as.factor(construction_method)),
+  occupancy_type=as.integer(as.factor(occupancy_type)),
+  state = as.integer(as.factor(state)),
+  race_of_applicant_or_borrower_collected=
+    as.integer(as.factor(race_of_applicant_or_borrower_collected_on_the_basis_of_visual_observation_or_surname)),
+  race_of_co_applicant_or_co_borrower_collected=
+    as.integer(as.factor(race_of_co_applicant_or_co_borrower_collected_on_the_basis_of_visual_observation_or_surname)),
+  sex_of_applicant_or_borrower=as.integer(as.factor(sex_of_applicant_or_borrower)),
+  sex_of_co_applicant_or_co_borrower=as.integer(as.factor(sex_of_co_applicant_or_co_borrower)),
+  sex_of_applicant_visual_observation=as.integer(as.factor(sex_of_applicant_or_borrower_collected_on_the_basis_of_visual_observation_or_surname)),
+  sex_of_co_applicant_visual_observation=as.integer(as.factor(sex_of_co_applicant_or_co_borrower_collected_on_the_basis_of_visual_observation_or_surname)),
+  age_of_applicant_or_borrower=as.integer(as.factor(age_of_applicant_or_borrower)),
+  age_of_applicant_62=as.integer(as.factor(age_of_applicant_62)),
+  age_of_co_applicant_or_co_borrower=as.integer(as.factor(age_of_co_applicant_or_co_borrower)),
+  age_of_co_applicant_62=as.integer(as.factor(age_of_co_applicant_62)),
+  hoepa_status=as.integer(as.factor(hoepa_status)),
+  lien_status=as.integer(as.factor(lien_status)),
+  applicant_credit_scoring_model=as.integer(as.factor(applicant_or_borrower_name_and_version_of_credit_scoring_model)),
+  co_applicant_credit_scoring_model=as.integer(as.factor(co_applicant_or_co_borrower_name_and_version_of_credit_scoring_model)),
+  balloon_payment=as.integer(as.factor(balloon_payment)),
+  interest_only_payments=as.integer(as.factor(interest_only_payments)),
+  negative_amortization=as.integer(as.factor(negative_amortization)),
+  other_non_amortizing_features=as.integer(as.factor(other_non_amortizing_features)),
+  manufactured_home_secured_property_type=as.integer(as.factor(manufactured_home_secured_property_type)),
+  manufactured_home_land_property_interest=as.integer(as.factor(manufactured_home_land_property_interest)),
+  total_units=as.integer(as.factor(total_units)),
+  submission_of_application=as.integer(as.factor(submission_of_application)),
+  initially_payable_to_your_institution=as.integer(as.factor(initially_payable_to_your_institution)),
+  reverse_mortgage=as.integer(as.factor(reverse_mortgage)),
+  open_end_line_of_credit=as.integer(as.factor(open_end_line_of_credit)),
+  business_or_commercial_purpose=as.integer(as.factor(business_or_commercial_purpose))
+  
+) %>%
+step_rm(id, 
+        ethnicity_of_applicant_or_borrower_1, 
+        ethnicity_of_applicant_or_borrower_2, 
+        ethnicity_of_applicant_or_borrower_3,
+        ethnicity_of_applicant_or_borrower_4,
+        ethnicity_of_applicant_or_borrower_5,
+        ethnicity_of_co_applicant_or_co_borrower_1, 
+        ethnicity_of_co_applicant_or_co_borrower_2, 
+        ethnicity_of_co_applicant_or_co_borrower_3,
+        race_of_applicant_or_borrower_1, 
+        race_of_applicant_or_borrower_2, 
+        race_of_applicant_or_borrower_3, 
+        race_of_applicant_or_borrower_4,
+        race_of_applicant_or_borrower_5,
+        race_of_co_applicant_or_co_borrower_1, 
+        race_of_co_applicant_or_co_borrower_2, 
+        race_of_co_applicant_or_co_borrower_3, 
+        race_of_co_applicant_or_co_borrower_4,
+        race_of_co_applicant_or_co_borrower_5,
+        multifamily_affordable_units
+        ) %>%
+step_zv(all_predictors())
+?step_zv
+##If you want to see the transformed train data, prep and juice
+prep_rec <- prep(scrap_recipe)
+train<-juice(prep_rec)
+
+train$action_taken
+train$action_taken <-ifelse(train$action_taken == 1, 1, 0)
+
+
+
+# Calculate the percentage of NAs in each column
+na_percentage <- sapply(train, function(x) {
+  percent_na <- sum(is.na(x)) / length(x) * 100
+  return(percent_na)
+})
+
+# Print the percentage of NAs in each column along with their names
+cat("Percentage of NAs in each column:\n")
+for (name in names(na_percentage)) {
+  formatted_na_percentage <- sprintf("%.2f%%", na_percentage[name])
+  cat(name, ":", formatted_na_percentage, "\n")
+}
+
+
+```
+
+```{r}
+Recipe_21<-recipe(action_taken ~ ., data = train) %>%
+  step_mutate(
+    hoepa_status=as.integer(as.factor(hoepa_status)),
+    occupancy_type=as.integer(as.factor(occupancy_type)),
+    loan_purpose=as.integer(as.factor(loan_purpose)),
+    submission_of_application=as.integer(as.factor(submission_of_application)),
+    co_applicant_credit_scoring_model=as.integer(as.factor(co_applicant_or_co_borrower_name_and_version_of_credit_scoring_model)),
+    open_end_line_of_credit=as.integer(as.factor(open_end_line_of_credit)),
+    state = as.integer(as.factor(state)),
+    race_applicant = case_when(
+    race_of_applicant_or_borrower_3 == 6 ~ NA, 
+    race_of_applicant_or_borrower_2 == 6 ~ NA, 
+    race_of_applicant_or_borrower_1 == 6 ~ NA, 
+    race_of_applicant_or_borrower_3 == 7 ~ NA, 
+    race_of_applicant_or_borrower_2 == 7 ~ NA, 
+    race_of_applicant_or_borrower_1 == 7 ~ NA, 
+    
+    race_of_applicant_or_borrower_3 == 2 ~ 2, 
+    race_of_applicant_or_borrower_3 == 21 ~ 2, 
+    race_of_applicant_or_borrower_3 == 22 ~ 2, 
+    race_of_applicant_or_borrower_3 == 23 ~ 2, 
+    race_of_applicant_or_borrower_3 == 24 ~ 2, 
+    race_of_applicant_or_borrower_3 == 25 ~ 2, 
+    race_of_applicant_or_borrower_3 == 26 ~ 2, 
+    race_of_applicant_or_borrower_3 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_3 == 4 ~ 4,
+    race_of_applicant_or_borrower_3 == 41 ~ 4, 
+    race_of_applicant_or_borrower_3 == 42 ~ 4,
+    race_of_applicant_or_borrower_3 == 43 ~ 4,
+    race_of_applicant_or_borrower_3 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_3 == 1 ~ 1, 
+    race_of_applicant_or_borrower_3 == 3 ~ 3, 
+    race_of_applicant_or_borrower_3 == 5 ~ 5, 
+    
+    race_of_applicant_or_borrower_2 == 2 ~ 2, 
+    race_of_applicant_or_borrower_2 == 21 ~ 2, 
+    race_of_applicant_or_borrower_2 == 22 ~ 2, 
+    race_of_applicant_or_borrower_2 == 23 ~ 2, 
+    race_of_applicant_or_borrower_2 == 24 ~ 2, 
+    race_of_applicant_or_borrower_2 == 25 ~ 2, 
+    race_of_applicant_or_borrower_2 == 26 ~ 2, 
+    race_of_applicant_or_borrower_2 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_2 == 4 ~ 4,
+    race_of_applicant_or_borrower_2 == 41 ~ 4, 
+    race_of_applicant_or_borrower_2 == 42 ~ 4,
+    race_of_applicant_or_borrower_2 == 43 ~ 4,
+    race_of_applicant_or_borrower_2 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_2 == 1 ~ 1, 
+    race_of_applicant_or_borrower_2 == 3 ~ 3, 
+    race_of_applicant_or_borrower_2 == 5 ~ 5, 
+    
+    race_of_applicant_or_borrower_1 == 21 ~ 2, 
+    race_of_applicant_or_borrower_1 == 22 ~ 2, 
+    race_of_applicant_or_borrower_1 == 23 ~ 2, 
+    race_of_applicant_or_borrower_1 == 24 ~ 2, 
+    race_of_applicant_or_borrower_1 == 25 ~ 2, 
+    race_of_applicant_or_borrower_1 == 26 ~ 2, 
+    race_of_applicant_or_borrower_1 == 27 ~ 2, 
+    
+    race_of_applicant_or_borrower_1 == 41 ~ 4, 
+    race_of_applicant_or_borrower_1 == 42 ~ 4,
+    race_of_applicant_or_borrower_1 == 43 ~ 4,
+    race_of_applicant_or_borrower_1 == 44 ~ 4,
+    
+    race_of_applicant_or_borrower_1 == 1 ~ 1, 
+    race_of_applicant_or_borrower_1 == 3 ~ 3, 
+    race_of_applicant_or_borrower_1 == 5 ~ 5, 
+    
+    TRUE ~ NA
+  ), 
+  age_of_applicant_or_borrower=as.integer(as.factor(age_of_applicant_or_borrower)),
+  applicant_credit_scoring_model=as.integer(as.factor(applicant_or_borrower_name_and_version_of_credit_scoring_model)),
+  age_of_co_applicant_or_co_borrower=as.integer(as.factor(age_of_co_applicant_or_co_borrower)),
+  loan_type=as.integer(as.factor(loan_type)),
+  is_hispanic_co_applicant = case_when(
+    ethnicity_of_co_applicant_or_co_borrower_1 == 2 ~ 0, 
+    ethnicity_of_co_applicant_or_co_borrower_2 == 2 ~ 0,
+    ethnicity_of_co_applicant_or_co_borrower_1 == 1 ~ 1,
+    ethnicity_of_co_applicant_or_co_borrower_2 == 1 ~ 1,
+    TRUE ~ NA
+  ),
+  age_of_co_applicant_62=as.integer(as.factor(age_of_co_applicant_62))
+  
+  )%>%
+step_rm(id, 
+        ethnicity_of_applicant_or_borrower_1, 
+        ethnicity_of_applicant_or_borrower_2, 
+        ethnicity_of_applicant_or_borrower_3,
+        ethnicity_of_applicant_or_borrower_4,
+        ethnicity_of_applicant_or_borrower_5,
+        ethnicity_of_co_applicant_or_co_borrower_1, 
+        ethnicity_of_co_applicant_or_co_borrower_2, 
+        ethnicity_of_co_applicant_or_co_borrower_3,
+        race_of_applicant_or_borrower_1, 
+        race_of_applicant_or_borrower_2, 
+        race_of_applicant_or_borrower_3, 
+        race_of_applicant_or_borrower_4,
+        race_of_applicant_or_borrower_5,
+        race_of_co_applicant_or_co_borrower_1, 
+        race_of_co_applicant_or_co_borrower_2, 
+        race_of_co_applicant_or_co_borrower_3, 
+        race_of_co_applicant_or_co_borrower_4,
+        race_of_co_applicant_or_co_borrower_5,
+        multifamily_affordable_units,
+        construction_method,
+        ethnicity_of_applicant_or_borrower_collected_on_the_basis_of_visual_observation_or_surname,
+        ethnicity_of_co_applicant_or_co_borrower_collected_on_the_basis_of_visual_observation_or_surname,
+        race_of_applicant_or_borrower_collected_on_the_basis_of_visual_observation_or_surname,
+        race_of_co_applicant_or_co_borrower_collected_on_the_basis_of_visual_observation_or_surname,
+        sex_of_applicant_or_borrower,                                                               
+        sex_of_co_applicant_or_co_borrower,                                                             
+        sex_of_applicant_or_borrower_collected_on_the_basis_of_visual_observation_or_surname,            
+        sex_of_co_applicant_or_co_borrower_collected_on_the_basis_of_visual_observation_or_surname,
+        age_of_applicant_62,                                                                             
+        lien_status,                                                                                     
+        introductory_rate_period,                                                                       
+        balloon_payment,                                                                                 
+        interest_only_payments,                                                                         
+        negative_amortization,                                                                           
+        other_non_amortizing_features,                                                                   
+        manufactured_home_secured_property_type,                                                         
+        manufactured_home_land_property_interest,                                                    
+        total_units,                                                                                     
+        initially_payable_to_your_institution,                                                         
+        business_or_commercial_purpose,                                                               
+        co_applicant_credit_scoring_model,                                                              
+        applicant_credit_scoring_model,
+        
+        ) %>%
+step_zv(all_predictors())
+
+prep_rec <- prep(Recipe_21)
+transformed<-juice(prep_rec)
+
+names(transformed)
+
+```
+
+
+
+```{r}
+
+# Load the xgboost package
+library(xgboost)
+# Prepare data
+# Use action_taken as label instead of percent_dem for classification
+train.data <- xgb.DMatrix(data = as.matrix(train[, -which(names(train) == "action_taken")]), label = train$action_taken)
+
+# Fit model
+# Change the objective function for classification (binary or multi-class)
+# For binary classification use "binary:logistic"
+# For multi-class classification with k classes use "multi:softmax" and set num_class=k
+xgb_fit <- xgboost(data = train.data, objective = "binary:logistic", nrounds = 100)
+
+# Feature importance
+importance_matrix <- xgb.importance(model = xgb_fit)
+print(importance_matrix)
+
+# Start PNG device driver to save output to figure.png
+png("feature_importance_plot_classification.png", width = 800, height = 600)
+
+# Plotting feature importance
+xgb.plot.importance(importance_matrix)
+
+# Add plot title, x-axis and y-axis labels
+title(main="Feature Importance Generated by XGBoost", ylab="Feature", xlab="Importance Score")
+
+# Turn off device driver (to close PNG file)
+dev.off()
+
+xgb.plot.importance(importance_matrix)
+
+# Sort the dataframe by Gain in descending order
+sorted_importance_matrix <- importance_matrix %>% arrange(desc(Gain))
+# Save the sorted dataframe to a CSV file
+write.csv(sorted_importance_matrix, "sorted_importance_matrix.csv", row.names = FALSE)
+
+top_features <- importance_matrix %>% arrange(desc(Gain))%>%pull(Feature)
+```
+
+```{r}
+# ... (assuming data preparation is already done)
+
+
+# Sort importance matrix
+importance_matrix_sorted <- importance_matrix[order(-importance_matrix$Gain), ]
+important_features <- importance_matrix_sorted$Feature
+important_features<- important_features
+# Initialize progress bar
+pb <- txtProgressBar(min = 0, max = length(important_features), style = 3)
+
+results_df <- data.frame(Num_Features = integer(), Accuracy = numeric())
+
+for (n in 1:length(important_features)) {
+  selected_features <- important_features[1:n]
+  
+  # Identifying non-selected features
+  all_vars <- colnames(train)
+  non_selected_features <- setdiff(all_vars, c("action_taken", selected_features))
+  
+  # Create the model spec
+  xgb_spec_untuned <- boost_tree(
+    mode = 'classification', 
+    trees = 100
+  ) %>%
+    set_engine('xgboost', objective = "binary:logistic") %>%
+    set_mode('classification')
+  
+  # Create the recipe
+  xgb_recipe <- recipe(action_taken ~ ., data = train) %>%
+    update_role(selected_features, new_role = "predictor") %>%
+    update_role(non_selected_features, new_role = "ID variable")
+  
+  # Create the workflow
+  xgb_workflow <- workflow() %>%
+    add_recipe(Recipe_21) %>%
+    add_model(xgb_spec_untuned)
+  
+  # create 10-fold cross validation
+  train_folds <- vfold_cv(train, v = 10)
+
+  # Fit model with cross-validation
+  xgb_crossval_fit <- xgb_workflow %>% 
+    fit_resamples(resamples = train_folds,control= control_resamples(verbose=TRUE))
+  
+  # Collect metrics
+  metrics <- xgb_crossval_fit %>% collect_metrics()
+  
+  # Find the mean Accuracy from cross-validation
+  mean_accuracy <- metrics %>% filter(.metric == 'accuracy') %>% select(mean) %>% pull()
+  
+  # Store the results
+  results_df <- rbind(results_df, data.frame(Num_Features = n, Accuracy = mean_accuracy))
+  
+  print(n)
+  # Update progress bar
+  setTxtProgressBar(pb, n)
+}
+
+# Close progress bar
+close(pb)
+
+# Plot the results
+sensitivity_plot<-ggplot(results_df, aes(x = Num_Features, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  ggtitle("Sensitivity Analysis: Performance vs Number of Features")
+
+ggsave("sensitivity_plot_classification.png", plot = sensitivity_plot, width = 10, height = 6, dpi = 300)
+
+
+```
+```{r}
+unique(train$multifamily_affordable_units)
+
+```
+
+
+```{r}
+
+
+library(tidymodels)
+
+# Initialize progress bar
+pb <- txtProgressBar(min = 0, max = length(important_features), style = 3)
+
+results_df <- data.frame(Num_Features = integer(), Accuracy = numeric())
+
+for (n in 1:length(important_features)) {
+  selected_features <- important_features[1:n]
+  
+  # Identifying non-selected features
+  all_vars <- colnames(train)
+  non_selected_features <- setdiff(all_vars, c("action_taken", selected_features))
+  
+  # Create the model spec
+  log_reg_spec <- logistic_reg() %>%
+    set_engine("glm") %>%
+    set_mode("classification")
+  
+  # Create the recipe
+  log_reg_recipe <- recipe(action_taken ~ ., data = train) %>%
+    update_role(selected_features, new_role = "predictor") %>%
+    update_role(non_selected_features, new_role = "ID variable") 
+  
+  # Create the workflow
+  log_reg_workflow <- workflow() %>%
+    add_recipe(log_reg_recipe) %>%
+    add_model(log_reg_spec)
+  
+  # Create 10-fold cross-validation
+  train_folds <- vfold_cv(train, v = 10)
+  
+  # Fit model with cross-validation
+  log_reg_fit <- log_reg_workflow %>% 
+    fit_resamples(resamples = train_folds,control=control_resamples(verbose=TRUE))
+  
+  # Collect metrics
+  metrics <- log_reg_fit %>% collect_metrics()
+  
+  # Find the mean Accuracy from cross-validation
+  mean_accuracy <- metrics %>% filter(.metric == 'accuracy') %>% select(mean) %>% pull()
+  
+  # Store the results
+  results_df <- rbind(results_df, data.frame(Num_Features = n, Accuracy = mean_accuracy))
+  
+  print(n)
+  # Update progress bar
+  setTxtProgressBar(pb, n)
+}
+
+# Close progress bar
+close(pb)
+
+# Plot the results
+sensitivity_plot <- ggplot(results_df, aes(x = Num_Features, y = Accuracy)) +
+  geom_line() +
+  geom_point() +
+  ggtitle("Sensitivity Analysis: Performance vs Number of Features")
+
+ggsave("sensitivity_plot_classification.png", plot = sensitivity_plot, width = 10, height = 6, dpi = 300)
+
+##13,21,36
+show_notes(.Last.tune.result)
+
+glm(action_taken ~ ., data = train, family = binomial)
+```
+
